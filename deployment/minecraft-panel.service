@@ -1,0 +1,18 @@
+[Unit]
+Description=Antigravity Minecraft Panel Backend Service
+After=network.target
+
+[Service]
+User=minecraft
+Group=minecraft
+WorkingDirectory=/var/www/minecraft-panel/backend
+Environment="PATH=/var/www/minecraft-panel/backend/.venv/bin"
+Environment="SECRET_KEY=production-secret-key-change-me"
+Environment="MINECRAFT_SERVER_DIR=/var/www/minecraft-server"
+ExecStart=/var/www/minecraft-panel/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

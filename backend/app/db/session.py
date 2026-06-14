@@ -1,0 +1,38 @@
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from app.config import settings
+
+# Create async engine with pool settings
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    connect_args={"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {},
+    pool_pre_ping=True
+)
+
+# SQLite optimization event listener
+@event.listens_for(engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    if settings.DATABASE_URL.startswith("sqlite"):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON;")
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.execute("PRAGMA synchronous=NORMAL;")
+        cursor.execute("PRAGMA busy_timeout=5000;")
+        cursor.close()
+
+# Async session factory
+SessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False
+)
+
+# Dependency to get db session
+async def get_db():
+    async with SessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()

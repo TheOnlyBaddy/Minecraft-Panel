@@ -1,0 +1,147 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Silkscreen:wght@400;700&family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+@theme {
+  --color-bg-primary: #0D1117;
+  --color-bg-secondary: #161B22;
+  --color-bg-surface: #1C2128;
+  --color-bg-elevated: #232A34;
+
+  --color-mc-emerald: #2ECC71;
+  --color-mc-diamond: #45D9FF;
+  --color-mc-gold: #F5C542;
+  --color-mc-redstone: #FF5D5D;
+  --color-mc-amethyst: #B388FF;
+  --color-mc-copper: #D88C4A;
+
+  --color-status-online: #2ECC71;
+  --color-status-offline: #7F8C8D;
+  --color-status-warning: #F5C542;
+  --color-status-error: #FF5D5D;
+  --color-status-starting: #45D9FF;
+  --color-status-stopping: #FF8A65;
+
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #C7CDD5;
+  --color-text-muted: #8A94A6;
+
+  --font-sans: 'Inter', 'system-ui', 'sans-serif';
+  --font-pixel: 'VT323', 'Silkscreen', monospace;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'monospace';
+  
+  --shadow-mc-sm: 1px 1px 0px 0px rgba(0, 0, 0, 0.4);
+  --shadow-mc-md: 2px 2px 0px 0px rgba(0, 0, 0, 0.4);
+  --shadow-mc-lg: 4px 4px 0px 0px rgba(0, 0, 0, 0.5);
+}
+
+
+@layer base {
+  body {
+    @apply bg-bg-primary text-text-primary font-sans antialiased overflow-x-hidden;
+    margin: 0;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0D1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1C2128;
+  border: 1px solid #232A34;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8A94A6;
+}
+
+/* Custom keyframes for slow-moving panorama background */
+@keyframes panorama-scroll {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.panorama-bg {
+  background-size: 200% 200%;
+  animation: panorama-scroll 60s ease-in-out infinite;
+}
+
+.custom-bg-pan {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
+  background-size: cover;
+  background-position: center;
+  animation: gpu-slow-pan 100s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes gpu-slow-pan {
+  0% {
+    transform: translate3d(0%, 0%, 0);
+  }
+  12.5% {
+    transform: translate3d(-4%, 2%, 0);
+  }
+  25% {
+    transform: translate3d(3%, -5%, 0);
+  }
+  37.5% {
+    transform: translate3d(-2%, -2%, 0);
+  }
+  50% {
+    transform: translate3d(5%, 4%, 0);
+  }
+  62.5% {
+    transform: translate3d(-5%, 1%, 0);
+  }
+  75% {
+    transform: translate3d(1%, -4%, 0);
+  }
+  87.5% {
+    transform: translate3d(4%, -1%, 0);
+  }
+  100% {
+    transform: translate3d(0%, 0%, 0);
+  }
+}
+
+/* Autocomplete suggestion item hover style */
+.terminal-suggestion-active {
+  background-color: #232A34;
+  color: #2ECC71;
+}
+
+/* Tiled deepslate background animation */
+@keyframes deepslate-pan {
+  0% {
+    background-position: 0px 0px;
+  }
+  100% {
+    background-position: 256px 256px;
+  }
+}
+
+.bg-deepslate {
+  background-image: url('./assets/deepslate_texture.png');
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  image-rendering: pixelated;
+  animation: deepslate-pan 45s linear infinite;
+}
+
