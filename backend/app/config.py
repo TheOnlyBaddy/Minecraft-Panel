@@ -21,10 +21,10 @@ class Settings(BaseSettings):
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
-                    return [str(item).strip() for item in parsed]
+                    return [str(item).strip().rstrip('/') for item in parsed]
             except Exception:
                 pass
-            return [item.strip() for item in v.split(",") if item.strip()]
+            return [item.strip().rstrip('/') for item in v.split(",") if item.strip()]
         return v
     
     # SQLite Database Configuration

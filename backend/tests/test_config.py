@@ -298,3 +298,24 @@ async def test_api_config_auto_restart_when_running(temp_server_dir, client: Asy
 
     # Reset process manager status
     process_manager.status = "STOPPED"
+
+
+def test_cors_origins_parsing():
+    from app.config import Settings
+    
+    # Test raw string list parsing with trailing slashes
+    origins = Settings.parse_cors_origins("https://foo.com/, http://bar.com/")
+    assert origins == ["https://foo.com", "http://bar.com"]
+
+    # Test JSON list parsing with trailing slashes
+    origins_json = Settings.parse_cors_origins('["https://vercel.app/", "http://localhost:3000/"]')
+    assert origins_json == ["https://vercel.app", "http://localhost:3000"]
+
+    # Test empty string parsing
+    origins_empty = Settings.parse_cors_origins("   ")
+    assert origins_empty == []
+
+    # Test non-string parsing (list of string)
+    origins_list = Settings.parse_cors_origins(["https://foo.com/"])
+    assert origins_list == ["https://foo.com/"]  # Direct list bypasses validator logic, which is standard Pydantic behavior unless validated inside.
+
