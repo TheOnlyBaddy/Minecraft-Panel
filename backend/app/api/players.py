@@ -104,9 +104,15 @@ async def write_player_list(list_type: str, data: list) -> None:
 async def get_online_players(
     current_user: User = Depends(require_admin)
 ):
-    from app.services.process_manager import process_manager
+    if settings.is_remote_mode:
+        from app.services.metrics_service import metrics_service
+        latest = metrics_service.latest_agent_metrics
+        raw_players = latest.get("active_players_list", []) if latest else []
+    else:
+        from app.services.process_manager import process_manager
+        raw_players = list(getattr(process_manager, "active_players_set", set()))
+        
     # Return online players with offline UUIDs for frontend consistency, stripping any ANSI escape sequences
-    raw_players = list(getattr(process_manager, "active_players_set", set()))
     clean_players = [re.sub(r'\x1B\s*(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', p) for p in raw_players]
     return [{"name": p, "uuid": get_offline_uuid(p)} for p in clean_players if p]
 
