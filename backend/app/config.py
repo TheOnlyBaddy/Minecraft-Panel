@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     CORS_ORIGINS: Any = ["http://localhost:3000"]
+    CORS_ORIGIN_REGEX: str | None = os.getenv("CORS_ORIGIN_REGEX", r"https://minecraft-panel-fronetnd.*\.vercel\.app")
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

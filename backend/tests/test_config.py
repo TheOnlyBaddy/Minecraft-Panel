@@ -319,3 +319,10 @@ def test_cors_origins_parsing():
     origins_list = Settings.parse_cors_origins(["https://foo.com/"])
     assert origins_list == ["https://foo.com/"]  # Direct list bypasses validator logic, which is standard Pydantic behavior unless validated inside.
 
+    # Test regex configuration matches preview URLs
+    import re
+    settings_instance = Settings()
+    assert settings_instance.CORS_ORIGIN_REGEX is not None
+    pattern = re.compile(settings_instance.CORS_ORIGIN_REGEX)
+    assert pattern.match("https://minecraft-panel-fronetnd-pvaefrpzc-shubh-barnwals-projects.vercel.app") is not None
+
