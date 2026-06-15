@@ -47,9 +47,6 @@ class Settings(BaseSettings):
     # Agent Split Configuration
     AGENT_TOKEN: str = os.getenv("AGENT_TOKEN", "")
 
-    # MongoDB Configuration (optional, overrides user/session storage)
-    MONGO_URL: str = os.getenv("MONGO_URL", "")
-
     @property
     def is_remote_mode(self) -> bool:
         return self.AGENT_TOKEN != ""

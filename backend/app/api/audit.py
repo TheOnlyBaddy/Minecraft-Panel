@@ -21,37 +21,6 @@ async def get_audit_logs(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
-    from app.db.mongodb import mongodb_manager
-    import json
-
-    if mongodb_manager.is_active:
-        records, total_count = await mongodb_manager.get_audit_logs(
-            page=page,
-            limit=limit,
-            action=action,
-            username=username,
-            search=search
-        )
-        serialized = []
-        for log in records:
-            serialized.append({
-                "id": log["id"],
-                "user_id": log["user_id"],
-                "username": log["username"],
-                "action": log["action"],
-                "target": log["target"],
-                "ip_address": log["ip_address"],
-                "user_agent": log["user_agent"],
-                "timestamp": log["timestamp"].isoformat() if log.get("timestamp") else None,
-                "details": json.dumps(log["details"]) if log.get("details") else None
-            })
-        return {
-            "total": total_count,
-            "page": page,
-            "limit": limit,
-            "records": serialized
-        }
-
     # Base query for selecting records and joining with User to retrieve the username
     query = select(AuditLog).options(selectinload(AuditLog.user)).outerjoin(User).order_by(AuditLog.timestamp.desc())
     count_query = select(func.count()).select_from(AuditLog).outerjoin(User)
