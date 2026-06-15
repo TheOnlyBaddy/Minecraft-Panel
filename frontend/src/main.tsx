@@ -10,6 +10,10 @@ if (VITE_API_URL) {
   window.fetch = async (input, init) => {
     if (typeof input === 'string' && input.startsWith('/api')) {
       input = `${VITE_API_URL.replace(/\/$/, '')}${input}`;
+      init = {
+        ...init,
+        credentials: 'include'
+      };
     }
     return originalFetch(input, init);
   };

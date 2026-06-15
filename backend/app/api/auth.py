@@ -55,8 +55,8 @@ async def login(
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         expires=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        secure=False,  # Set to True in production with SSL
-        samesite="lax"  # Strict or Lax depending on domain mapping
+        secure=settings.is_remote_mode,  # Set to True in production/remote mode
+        samesite="none" if settings.is_remote_mode else "lax"  # Allow cross-domain cookies in production
     )
     
     return {
