@@ -99,5 +99,15 @@ All authenticated pages display this general structure:
 ---
 
 ## 5. Mobile Responsiveness Requirements
-1. **Collapsible Sidebar**: Shrinks to a compact 16px icon rail on tablets and mobiles.
-2. **Auto-Wrap Grids**: Metrics charts and hardware graphs wrap from side-by-side to stacked columns below `768px`.
+1. **Collapsible Sidebar Drawer**: Transforms from a static sidebar into a sliding overlay drawer on viewports under `768px`. A hamburger menu icon (☰) toggles the drawer open.
+2. **Touch-Dismiss Backdrop**: Tapping the semi-transparent backdrop behind the open drawer slides it closed.
+3. **Auto-Wrap Grids**: Metrics charts and hardware graphs wrap from side-by-side to stacked columns below `768px`.
+4. **Card-Based Table Fallbacks**: Tables (like AccessTab user management and audit trails) transform into vertically stacked profile cards on mobile to prevent horizontal scrolling.
+5. **LAN Network Binding**: Vite dev server binds to `0.0.0.0` (`host: true`) so mobile devices on the same Wi-Fi network can access the panel instantly.
+
+---
+
+## 6. Dynamic Branding & Custom Assets
+* **Panel Name**: Configurable via `PANEL_NAME` environment variable. Exposed at `/api/info` and rendered dynamically across all branded views (login, loading screen, sidebar header).
+* **Custom Logo**: Place a `logo.png` in `frontend/public/`. The panel automatically detects it via a preload HEAD request. Falls back to a signature emerald shield SVG icon.
+* **Custom Background**: Place a `background.png` or `background.jpg` in `frontend/public/`. When detected, it replaces the pixelated deepslate tile with a GPU-accelerated slow-panning cinematic wallpaper using `translate3d` CSS keyframe animation (100-second loop).

@@ -11,6 +11,7 @@ export interface TelemetryData {
   active_players_list?: string[];
   server_status: 'STOPPED' | 'STARTING' | 'RUNNING' | 'STOPPING' | 'CRASHED';
   server_address: string;
+  minecraft_version?: string;
 }
 
 interface UseWebSocketResult {

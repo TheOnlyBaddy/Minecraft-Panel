@@ -73,7 +73,8 @@ app.include_router(plugins.router, prefix=settings.API_V1_STR)
 @app.get("/api/info")
 async def get_panel_info():
     return {
-        "panel_name": settings.PANEL_NAME
+        "panel_name": settings.PANEL_NAME,
+        "minecraft_version": settings.MINECRAFT_VERSION
     }
 
 @app.get("/api/health")

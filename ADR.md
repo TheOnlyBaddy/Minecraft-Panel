@@ -41,6 +41,9 @@ Describe the outcomes of this decision, including positive benefits, negative tr
 | **ADR-007** | Adopt Tailwind CSS styling engine | Accepted | 2026-06-13 |
 | **ADR-008** | In-Browser Synthesized Sound Effects (Web Audio API) | Accepted | 2026-06-13 |
 | **ADR-009** | Telemetry Extension for Active Player Tracking | Accepted | 2026-06-14 |
+| **ADR-010** | Flexible Server Launch Strategy (start.bat + Java Fallback) | Accepted | 2026-06-14 |
+| **ADR-011** | Playit.gg Tunnel Agent Auto-Detection | Accepted | 2026-06-14 |
+| **ADR-012** | Mobile Responsive Sidebar Drawer | Accepted | 2026-06-14 |
 
 ---
 
@@ -283,3 +286,80 @@ Extend the metrics WebSocket telemetry payload to include `active_players_list` 
   * Permits showing real-time, name-specific toast notifications (e.g. `Alex joined the game`) alongside the audio chimes.
 * **Negative**:
   * Marginally increases the size of the JSON payload streamed over WebSockets (negligible for typical server player limits).
+
+---
+
+### ADR-010: Flexible Server Launch Strategy (start.bat + Java Fallback)
+
+* **Status**: Accepted
+* **Date**: 2026-06-14
+* **Author**: Lead Backend Engineer
+
+#### Context
+The server owner uses a custom `start.bat` batch script with specific JVM flags (e.g., `-Xms6G -Xmx6G`). However, the panel must also be able to start the server independently if `start.bat` is missing or if the user prefers direct Java execution via configurable environment variables.
+
+#### Decision
+Implement a **cascading launch strategy**: On Windows, first check for `start.bat` and execute it via `cmd.exe /c start.bat`. If not found, fall back to direct `java -jar paper.jar nogui` using RAM settings from `MINECRAFT_MIN_RAM` and `MINECRAFT_MAX_RAM` environment variables. On Linux, check for `start.sh` before falling back similarly.
+
+#### Alternatives Considered
+* **Always use start.bat**: Rejected because it prevents the panel from operating independently of the batch script.
+* **Always use direct Java**: Rejected because it would ignore custom JVM flags in the user's existing batch script.
+
+#### Consequences
+* **Positive**:
+  * Respects existing server configurations while providing full fallback autonomy.
+  * RAM allocations are configurable through environment variables for the fallback path.
+* **Negative**:
+  * When using `start.bat`, the panel cannot dynamically override RAM settings—it uses whatever the batch script defines.
+
+---
+
+### ADR-011: Playit.gg Tunnel Agent Auto-Detection
+
+* **Status**: Accepted
+* **Date**: 2026-06-14
+* **Author**: Lead Backend Engineer
+
+#### Context
+The server owner uses playit.gg to create public tunnels for the Minecraft server. The playit agent binary (`playit.exe` on Windows, `playit` on Linux) resides alongside the server files. The panel should automatically detect and launch this agent when starting the server.
+
+#### Decision
+After launching the Minecraft server subprocess, check for the playit.gg binary in the server directory. If found, spawn it as a separate async subprocess. Stream its stdout/stderr into the panel console with a `[playit.gg]:` prefix. Terminate the tunnel agent automatically when the server stops or the panel shuts down.
+
+#### Alternatives Considered
+* **Manual toggle in the panel UI**: Rejected to minimize configuration complexity for the initial implementation.
+* **Systemd/Windows Service for playit**: Rejected because it decouples the tunnel lifecycle from the server lifecycle.
+
+#### Consequences
+* **Positive**:
+  * Zero-configuration tunnel management—just place the playit binary in the server directory.
+  * Tunnel lifecycle is perfectly synchronized with server lifecycle.
+  * Tunnel logs are visible in the panel console for debugging.
+* **Negative**:
+  * The panel assumes that the playit binary in the server directory is properly configured. Misconfigured agents may produce errors.
+
+---
+
+### ADR-012: Mobile Responsive Sidebar Drawer
+
+* **Status**: Accepted
+* **Date**: 2026-06-14
+* **Author**: Senior Frontend Engineer
+
+#### Context
+The panel must be accessible from mobile phone browsers on the same LAN network. The desktop sidebar navigation (with collapse/expand toggle) does not work well on small viewports, as it consumes too much horizontal space and prevents the main content from rendering properly.
+
+#### Decision
+On viewports under `768px`, transform the sidebar into a **sliding drawer overlay** controlled by a hamburger menu (☰) button. Add a semi-transparent backdrop that dismisses the drawer on tap. Convert table-based layouts (Access panel, audit trails) into vertically stacked profile cards to prevent horizontal scrolling.
+
+#### Alternatives Considered
+* **Bottom Tab Bar**: Common in mobile apps, but does not map well to the panel's 9+ navigation items.
+* **Dropdown Menu**: Rejected because it lacks the spatial awareness of a sliding drawer.
+
+#### Consequences
+* **Positive**:
+  * Full panel functionality is available on mobile phone browsers.
+  * Touch-friendly interactions (tap to dismiss, swipe-ready drawer).
+  * Table data remains readable without horizontal scrolling.
+* **Negative**:
+  * Drawer overlay requires careful z-index management to avoid conflicts with modals and toasts.

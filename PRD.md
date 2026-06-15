@@ -108,6 +108,11 @@ Managing a Minecraft server today is often fragmented and insecure:
 | **FR-6.2** | Backup | Restore & Delete | Extract backup archive over the current game directory after stopping the process. Delete backup files. | P0 |
 | **FR-7.1** | Audit | Event Logging | Log user ID, action name, IP address, user agent, timestamp, and metadata. Saved in database. | P0 |
 | **FR-8.1** | Monitoring| Historical Metrics | Save system and game metrics (average tick rate if reachable, player count, RAM usage) to SQLite database at 1-minute intervals. Retain for 30 days. | P1 |
+| **FR-9.1** | Tunnel | Playit.gg Auto-Detection | Detect `playit.exe` or `playit` binary in the Minecraft Server directory. If present, launch the tunnel agent as a subprocess alongside the game server, and terminate it when the server stops. | P1 |
+| **FR-9.2** | Lifecycle | Flexible Launch Strategy | On Windows, prefer `start.bat` for launching the server. Fall back to direct `java -jar` execution with configurable RAM flags (`-Xms6G -Xmx6G`) if no batch script is found. On Linux, prefer `start.sh` before falling back. | P0 |
+| **FR-9.3** | Dash | Dynamic Panel Branding | Allow the panel name to be configured via `PANEL_NAME` env var and exposed via `/api/info` endpoint. Dynamically swap login/loading/dashboard headers. | P1 |
+| **FR-9.4** | UI | Dynamic Custom Assets | Detect `/logo.png` and `/background.png` at runtime. Use emerald shield fallback for logos and deepslate tile fallback for backgrounds. Apply GPU-accelerated panning animation on backgrounds. | P1 |
+| **FR-9.5** | UI | Mobile Responsive Layout | Implement responsive sidebar drawer, hamburger menu, card-based table fallbacks, and touch-dismiss backdrop for devices under 768px viewport width. | P0 |
 
 ---
 
@@ -155,7 +160,7 @@ Managing a Minecraft server today is often fragmented and insecure:
 ---
 
 ## 11. Assumptions & Dependencies
-* **Java Runtime**: The target host machine must have Java Development Kit (JDK) 17 or 21 pre-installed and added to the system `PATH` to launch the Paper Minecraft server.
+* **Java Runtime**: The target host machine must have Java Development Kit (JDK) 17 or 21 pre-installed and added to the system `PATH` to launch the Paper Minecraft server. The default JVM heap allocation is 6GB min/max (configurable via `MINECRAFT_MIN_RAM` and `MINECRAFT_MAX_RAM` environment variables).
 * **OS Compatibility**: The platform backend is designed to run on Windows and Linux systems.
 * **Single Server instance**: The initial version assumes a single Minecraft server directory managed by a single instance of the management panel.
 
@@ -174,3 +179,4 @@ Managing a Minecraft server today is often fragmented and insecure:
 * **Phase B**: Modpack and Plugin Installer (one-click integration with Modrinth and CurseForge APIs).
 * **Phase C**: Schedule Manager (cron-like system for scheduling in-game commands, restarts, and backups).
 * **Phase D**: SFTP Access (expose a sandboxed SFTP server integrated with panel accounts to transfer files).
+* **Phase E**: Playit.gg Dashboard Integration (expose tunnel status, connected address, and latency metrics in the panel UI).

@@ -6,6 +6,7 @@
 * **Separation of Concerns**: The application must be partitioned into strict layers: API, Service, Repository, and Model layers. Business decisions must not be executed inside route controllers.
 * **Interface-Driven Process Control**: All process operations must interface through `ServerProcessInterface` to permit changing execution targets (e.g., switching to Docker containers) without breaking downstream code.
 * **State Immutability**: Services must not persist state globally. All states must be loaded from data models or handled via explicit, locked process instances (like the process manager instance).
+* **Process Lifecycle Coupling**: Auxiliary processes (like tunnel agents) must be lifecycle-bound to the primary server process. When the server stops, all coupled subprocesses must be terminated automatically.
 
 ### Recommended Practices
 * Restrict domain-specific service logic from calling other service domains directly where possible; use events or shared repositories instead.
@@ -40,6 +41,8 @@
 * **Strict TypeScript**: Set `strict: true` in `tsconfig.json`. Do not use the `any` type under any circumstances.
 * **Utility-First Styling**: Use Tailwind CSS for component styling. Do not write custom CSS stylesheets or classes outside standard utility attributes; define core theme structures in `index.css` or Tailwind configuration directives.
 * **State Cleanup**: Always return cleanup functions in React `useEffect` hooks (e.g., disconnecting WebSockets, clearing timers, or removing event listeners).
+* **Mobile-First Responsive Design**: All UI layouts must be tested on viewports as narrow as 375px. Use Tailwind responsive breakpoints (`md:`, `lg:`) for progressive enhancement rather than desktop-first degradation.
+* **Dynamic Asset Detection**: Custom branding assets (logo, background) must be detected at runtime via HEAD preload requests, with graceful fallbacks when assets are missing.
 
 ### Recommended Practices
 * Place component definitions in structured folders (e.g., `components/Button/Button.tsx`).

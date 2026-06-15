@@ -36,6 +36,16 @@ A premium, fully responsive, and feature-rich web management panel designed for 
   * **Player Joins**: Plays a lightweight alert.
   * **Player Disconnects**: Plays a soft warning note.
 
+### 6. playit.gg Tunnel Auto-Detection
+* **Zero-Config Tunnel**: If `playit.exe` (Windows) or `playit` (Linux) exists in the Minecraft Server directory, the panel automatically launches the tunnel agent alongside the server process.
+* **Lifecycle Sync**: The tunnel agent is started when the server starts and automatically terminated when the server stops.
+* **Integrated Console Logs**: Tunnel output is prefixed with `[playit.gg]:` and streamed directly into the panel console alongside server logs.
+
+### 7. Flexible Server Launch Strategy
+* **Batch Script Priority**: On Windows, the panel first checks for `start.bat` in the server directory and uses it if found (e.g., with custom JVM flags like `-Xms6G -Xmx6G`).
+* **Direct Java Fallback**: If no `start.bat` is found, the panel launches the server directly using `java -jar paper.jar --nogui` with RAM settings from environment variables.
+* **Cross-Platform**: On Linux, it checks for `start.sh` before falling back to direct Java execution.
+
 ---
 
 ## 🛠️ Technology Stack
@@ -61,7 +71,13 @@ You can customize the panel's brand configurations through environment variables
 | Variable | Description | Default |
 | :--- | :--- | :--- |
 | `PANEL_NAME` | The dynamic name displayed across the login, loading, and dashboard headers. | `"DEEP SURVIVAL"` |
-| `DATABASE_URL` | SQLite database URI filepath location. | `"sqlite:///./minecraft_panel.db"` |
+| `MINECRAFT_SERVER_ADDR` | The IP address/domain and port shown in the dashboard status bar. | `"192.168.1.13:25565"` |
+| `MINECRAFT_SERVER_DIR` | Absolute path to the Minecraft Server directory. | Auto-detected sibling `../Minecraft Server/` |
+| `MINECRAFT_JAR_NAME` | The server runtime JAR filename (e.g., `paper.jar`, `spigot.jar`). | `"paper.jar"` |
+| `MINECRAFT_MIN_RAM` | JVM minimum heap allocation (`-Xms`). | `"6G"` |
+| `MINECRAFT_MAX_RAM` | JVM maximum heap allocation (`-Xmx`). | `"6G"` |
+| `SECRET_KEY` | HMAC-SHA256 secret key for JWT session signing. Change in production. | Auto-generated |
+| `DATABASE_URL` | SQLite database URI filepath location. | `"sqlite+aiosqlite:///./dev.db"` |
 
 ---
 
@@ -112,28 +128,50 @@ You can customize the panel's brand configurations through environment variables
 
 ---
 
-## 📂 Project Structure
+## 📂 Folder & Project Structure
+
+The panel and the Minecraft server are sibling directories managed under the main workspace root directory:
 
 ```
-├── backend/                  # FastAPI Application
-│   ├── app/
-│   │   ├── config.py         # Configuration settings & env variables
-│   │   ├── main.py           # API routing, status, and WS sockets
-│   │   ├── models/           # SQLAlchemy schemas
-│   │   └── services/         # Process monitoring & audit services
-│   └── tests/                # Automated backend test suites
-├── frontend/                 # Vite React Application
-│   ├── public/               # Served static assets (background.png, logo.png)
-│   ├── src/
-│   │   ├── components/       # LoadingScreen, Logo, and shared indicators
-│   │   ├── context/          # AuthContext & ToastContext layers
-│   │   ├── hooks/            # WebSocket listeners
-│   │   ├── pages/Dashboard/  # Core view wrappers
-│   │   │   └── tabs/         # Modular tab subviews (Console, Access, Server)
-│   │   ├── index.css         # Styling system & custom GPU keyframe animations
-│   │   └── main.tsx          # React application entry-point
-│   └── vite.config.ts        # Vite proxy and LAN binding configurations
-└── deployment/               # Nginx & Systemd configuration files
+Projects/Minecraft/
+├── backups/                    # Auto-generated server backup zip archives
+│
+├── Minecraft Server/           # Live Minecraft Server Directory
+│   ├── logs/                   # Server execution logs (contains latest.log)
+│   ├── plugins/                # Installed plugin JARs
+│   ├── world/                  # Active level/world files
+│   ├── paper.jar               # Server runtime JAR binary executable
+│   ├── start.bat               # Windows startup batch script (uses -Xms6G -Xmx6G)
+│   ├── playit.exe              # (Optional) playit.gg tunnel agent binary
+│   ├── server.properties       # Server configuration parameters
+│   ├── whitelist.json          # Server whitelist file
+│   ├── ops.json                # Operators list file
+│   ├── banned-players.json     # Player bans list file
+│   └── banned-ips.json         # IP bans list file
+│
+└── Minecraft Panel/            # Web Control Panel Directory (This Repo)
+    ├── backend/                # FastAPI Application
+    │   ├── .env                # Active environment configuration (git-ignored)
+    │   ├── .env.example        # Template showing available env vars
+    │   ├── app/
+    │   │   ├── config.py       # Configuration settings & env variables
+    │   │   ├── main.py         # API routing, status, and WS sockets
+    │   │   ├── models/         # SQLAlchemy schemas
+    │   │   └── services/       # Process monitoring & audit services
+    │   │       └── process_manager.py  # Server lifecycle, playit.gg tunnel, log parsing
+    │   └── tests/              # Automated backend test suites
+    ├── frontend/               # Vite React Application
+    │   ├── public/             # Served static assets (background.png, logo.png)
+    │   ├── src/
+    │   │   ├── components/     # LoadingScreen, Logo, and shared indicators
+    │   │   ├── context/        # AuthContext & ToastContext layers
+    │   │   ├── hooks/          # WebSocket listeners
+    │   │   ├── pages/Dashboard/# Core view wrappers
+    │   │   │   └── tabs/       # Modular tab subviews (Console, Access, Server)
+    │   │   ├── index.css       # Styling system & custom GPU keyframe animations
+    │   │   └── main.tsx        # React application entry-point
+    │   └── vite.config.ts      # Vite proxy and LAN binding configurations
+    └── deployment/             # Nginx & Systemd configuration files
 ```
 
 ---

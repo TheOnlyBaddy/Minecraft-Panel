@@ -1158,6 +1158,11 @@ const Dashboard: React.FC = () => {
                 <span className="text-xs font-pixel text-white uppercase">{getStatusText(currentStatus)}</span>
               </div>
             </div>
+            {/* Version */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted">Minecraft Version</span>
+              <span className="text-xs font-mono text-white">{telemetryData?.minecraft_version || '26.1.2'}</span>
+            </div>
             {/* Address */}
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-mono uppercase tracking-wider text-text-muted">Server IP Address</span>
@@ -1181,7 +1186,7 @@ const Dashboard: React.FC = () => {
                 currentStatus === 'STARTING' ? 'bg-status-starting animate-pulse' :
                 currentStatus === 'STOPPING' ? 'bg-status-stopping animate-pulse' : 'bg-status-offline'
               }`}
-              title={`Server: ${getStatusText(currentStatus)}`}
+              title={`Server: ${getStatusText(currentStatus)} (${telemetryData?.minecraft_version || '26.1.2'})`}
             />
             {/* Mini Copy Address Button */}
             <button 

@@ -34,7 +34,7 @@ sequenceDiagram
 ---
 
 ## 2. Server Lifecycle State Machine
-The Minecraft server process transitions through specific states based on administrator action or operating system feedback. During transitions, synthesized 8-bit sound chimes are played in the browser.
+The Minecraft server process transitions through specific states based on administrator action or operating system feedback. The panel uses a cascading launch strategy: on Windows, it first attempts `start.bat`, then falls back to direct `java -jar` execution. During transitions, synthesized 8-bit sound chimes are played in the browser.
 
 ```mermaid
 stateDiagram-v2
@@ -188,6 +188,45 @@ sequenceDiagram
         FE-->>FE: Show Toast: "Alex joined the game"
         FE-->>FE: Play synthesized Player Join Chime (E5 -> A5)
     end
+```
+
+---
+
+## 4.6 Playit.gg Tunnel Auto-Detection Flow
+This diagram details how the panel detects and manages the playit.gg tunnel agent alongside the Minecraft server process.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant PM as ProcessManager Service
+    participant Proc as Minecraft Server Subprocess
+    participant PlayIt as Playit.gg Tunnel Subprocess
+    participant FE as React Frontend
+
+    Note over PM, PlayIt: Server Start with Tunnel Detection
+    PM->>Proc: Spawn Minecraft Server (start.bat or java -jar)
+    PM->>PM: Check for playit.exe/playit in server directory
+    alt Playit binary found
+        PM->>PlayIt: Spawn playit.exe as async subprocess
+        PM->>PM: Register stdout/stderr readers for tunnel
+        PM-->>FE: Console log: "[Panel]: Found playit.gg agent. Launching tunnel..."
+        loop Stream Tunnel Output
+            PlayIt->>PM: stdout line: tunnel status/address info
+            PM-->>FE: Console log: "[playit.gg]: <tunnel output>"
+        end
+    else Playit binary not found
+        PM-->>FE: No tunnel detection (silent skip)
+    end
+
+    Note over PM, PlayIt: Server Stop with Tunnel Cleanup
+    PM->>Proc: Send stop command to Minecraft stdin
+    Proc-->>PM: Subprocess exits
+    alt Playit process running
+        PM->>PlayIt: Kill tunnel subprocess
+        PlayIt-->>PM: Tunnel process terminated
+        PM-->>FE: Console log: "[Panel]: Cleaning up playit.gg tunnel..."
+    end
+    PM->>PM: Update state to STOPPED
 ```
 
 ---

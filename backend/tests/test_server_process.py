@@ -222,8 +222,13 @@ async def test_server_startup_with_start_bat(client: AsyncClient):
         stderr_lines=[]
     )
 
+    def mock_exists_bat(path):
+        if path.endswith("playit.exe") or path.endswith("playit"):
+            return False
+        return True
+
     with patch("app.services.process_manager.os.name", "nt"), \
-         patch("app.services.process_manager.os.path.exists", return_value=True), \
+         patch("app.services.process_manager.os.path.exists", side_effect=mock_exists_bat), \
          patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec:
         
         mock_exec.return_value = mock_proc
@@ -247,8 +252,13 @@ async def test_server_startup_with_start_sh(client: AsyncClient):
         stderr_lines=[]
     )
 
+    def mock_exists_sh(path):
+        if path.endswith("playit.exe") or path.endswith("playit"):
+            return False
+        return True
+
     with patch("app.services.process_manager.os.name", "posix"), \
-         patch("app.services.process_manager.os.path.exists", return_value=True), \
+         patch("app.services.process_manager.os.path.exists", side_effect=mock_exists_sh), \
          patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec:
         
         mock_exec.return_value = mock_proc
@@ -273,13 +283,13 @@ async def test_server_startup_fallback_java(client: AsyncClient):
     )
 
     import os
-    def mock_exists(path):
-        if path.endswith("start.bat") or path.endswith("start.sh"):
+    def mock_exists_java(path):
+        if path.endswith("start.bat") or path.endswith("start.sh") or path.endswith("playit.exe") or path.endswith("playit"):
             return False
         return True
 
     with patch("app.services.process_manager.os.name", "nt"), \
-         patch("app.services.process_manager.os.path.exists", side_effect=mock_exists), \
+         patch("app.services.process_manager.os.path.exists", side_effect=mock_exists_java), \
          patch("asyncio.create_subprocess_exec", new_callable=AsyncMock) as mock_exec:
         
         mock_exec.return_value = mock_proc

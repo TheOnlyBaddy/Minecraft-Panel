@@ -59,6 +59,8 @@ The Antigravity Panel is designed as a **Modular Monolith** to keep deployment s
 * **Icons**: Lucide React
 * **Terminal UI**: Custom-built interactive shell scroll window with monospace logs, auto-scroll locks, and a slash command autocomplete suggestion menu (triggered by `/`)
 * **Audio Engine**: Synthesized 8-bit sound effects (chimes) generated in real-time in the browser using the Web Audio API
+* **Mobile Responsive Layout**: Sidebar drawer with hamburger toggle, touch-dismiss backdrop, and card-based table fallbacks for viewports under 768px
+* **Dynamic Branding**: Runtime logo/background detection via HEAD preload with emerald shield and deepslate tile fallbacks
 
 ### Realtime Communication
 * **WebSockets**: Standard WebSocket protocol supported by FastAPI and native browser WebSocket API. Used for:
@@ -124,25 +126,22 @@ FastAPI's dependency injection system (`Depends`) is utilized to supply reposito
 ### Module Organization
 ```
 frontend/
+├── public/                    # Static assets (background.png, logo.png)
 ├── src/
-│   ├── assets/                 # SVGs, Fonts, Images
 │   ├── components/             # Reusable UI Components
-│   │   ├── Button/
-│   │   ├── Card/
-│   │   ├── Input/
-│   │   ├── Terminal/           # Custom canvas/virtual-scroll console logs
+│   │   ├── LoadingScreen.tsx  # Retro XP-bar loading with dynamic branding
+│   │   ├── Logo.tsx           # Dynamic logo with /logo.png detection & shield fallback
 │   │   └── StatusBadge/
-│   ├── context/                # Global contexts (AuthContext, SocketContext)
+│   ├── context/                # Global contexts (AuthContext, ToastContext)
 │   ├── hooks/                  # Custom hooks (useWebSocket, useConsoleWebSocket)
 │   ├── pages/                  # Top-level Page Views
-│   │   ├── Login/              # Login screen with animated panorama backdrop
-│   │   └── Dashboard/          # Dashboard wrapper with collapsible sidebar navigation
-│   │       └── tabs/           # Modular View Tabs (Server, Console, Options, Players, Plugins, Files, Worlds, Backups, Access)
-│   │   └── LoadingScreen/      # Retro XP-bar based loading splash screen
+│   │   ├── Login/              # Login screen with animated panorama/panning backdrop
+│   │   └── Dashboard/          # Dashboard wrapper with collapsible sidebar / mobile drawer
+│   │       └── tabs/           # Modular View Tabs (Server, Console, Options, Access)
 │   ├── utils/                  # Telemetry utilities, synthesized 8-bit audio module (audio.ts)
 │   ├── App.tsx                 # Main routing and provider hierarchy
-│   ├── main.tsx                # Dom entry point
-│   └── index.css               # Global CSS variables & layout resets
+│   ├── main.tsx                # DOM entry point
+│   └── index.css               # Global CSS variables, GPU keyframe animations & responsive breakpoints
 ```
 
 ### State Management
@@ -185,22 +184,28 @@ Two primary system roles are enforced:
 ## 6. Service Layer Design
 
 ### Process Manager Service (`ProcessManager`)
-Responsible for wrapping the Minecraft Paper Java execution.
-* Runs the subprocess using Python `subprocess.Popen` with argument lists (not raw shell strings):
+Responsible for wrapping the Minecraft Paper Java execution and managing auxiliary tunnel agents.
+* Implements a **flexible launch strategy**:
+  * On Windows, checks for `start.bat` in the server directory and runs it via `cmd.exe /c start.bat` if found.
+  * If no batch script exists, falls back to direct Java execution:
+    ```python
+    cmd = ["java", f"-Xms{ram_min}", f"-Xmx{ram_max}", "-jar", "paper.jar", "nogui"]
+    ```
+  * On Linux, checks for `start.sh` before falling back to direct Java.
+* Runs the subprocess using Python `subprocess.Popen` / `asyncio.create_subprocess_exec` with argument lists (not raw shell strings):
   ```python
-  cmd = ["java", f"-Xms{ram_min}", f"-Xmx{ram_max}", "-jar", "paper.jar", "nogui"]
-  process = subprocess.Popen(
-      cmd,
-      stdin=subprocess.PIPE,
-      stdout=subprocess.PIPE,
-      stderr=subprocess.PIPE,
+  process = await asyncio.create_subprocess_exec(
+      *cmd,
+      stdin=asyncio.subprocess.PIPE,
+      stdout=asyncio.subprocess.PIPE,
+      stderr=asyncio.subprocess.PIPE,
       cwd=server_dir,
-      text=True,
-      bufsize=1 # Line buffered
   )
   ```
+* **Playit.gg Tunnel Auto-Detection**: After launching the server, checks for `playit.exe` (Windows) or `playit` (Linux) in the server directory. If found, spawns it as a separate async subprocess, streams its output with `[playit.gg]:` prefix into the panel console, and terminates it automatically when the server stops.
 * Spawn async background tasks to read `stdout` and `stderr` continuously without blocking the main event loop.
 * Distribute log lines to active WebSocket connections via an in-memory broadcast manager (Pub/Sub pattern).
+* Parse player join/disconnect events from log lines to maintain an `active_players_set` for telemetry.
 * Write log entries to a local log buffer/file on disk for console history retrievals.
 
 ### Backup Service (`BackupService`)

@@ -18,6 +18,7 @@ class ProcessManager:
         if not hasattr(self, "_initialized"):
             self.status = "STOPPED"
             self.process = None
+            self.playit_process = None
             self.log_buffer = []
             self.max_log_lines = 2000
             self._log_readers = []
@@ -89,6 +90,31 @@ class ProcessManager:
                 cwd=server_dir
             )
 
+            # Check for playit.gg agent — first in server directory, then on system PATH
+            playit_bin = "playit.exe" if os.name == "nt" else "playit"
+            playit_path = os.path.join(server_dir, playit_bin)
+            if not os.path.exists(playit_path):
+                # Fall back to system-wide installation (e.g. C:\Program Files\playit_gg\bin\playit.exe)
+                import shutil
+                system_playit = shutil.which(playit_bin)
+                if system_playit:
+                    playit_path = system_playit
+
+            if os.path.exists(playit_path):
+                self._append_log(f"[Panel]: Found playit.gg agent at {playit_path}. Launching tunnel...")
+                try:
+                    self.playit_process = await asyncio.create_subprocess_exec(
+                        playit_path,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        cwd=server_dir
+                    )
+                    # Read playit output streams in background tasks
+                    asyncio.create_task(self._read_playit_stream(self.playit_process.stdout))
+                    asyncio.create_task(self._read_playit_stream(self.playit_process.stderr))
+                except Exception as p_err:
+                    self._append_log(f"[Panel Warning]: Failed to start playit.gg: {str(p_err)}")
+
             # Insert Start event in database
             async with session_factory() as db:
                 event = ServerEvent(
@@ -145,6 +171,12 @@ class ProcessManager:
         except ProcessLookupError:
             pass
         finally:
+            if self.playit_process:
+                try:
+                    self.playit_process.kill()
+                except Exception:
+                    pass
+                self.playit_process = None
             self.status = "STOPPED"
             self.process = None
             
@@ -254,6 +286,16 @@ class ProcessManager:
 
         exit_code = await self.process.wait()
         
+        # Clean up playit process if running
+        if self.playit_process:
+            self._append_log("[Panel]: Subprocess exited. Cleaning up playit.gg tunnel...")
+            try:
+                self.playit_process.kill()
+                await self.playit_process.wait()
+            except Exception:
+                pass
+            self.playit_process = None
+
         # Clean up stream readers
         for reader in self._log_readers:
             if not reader.done():
@@ -297,6 +339,19 @@ class ProcessManager:
                 from app.services.console_service import console_service
                 loop.create_task(console_service.broadcast(formatted_line))
         except RuntimeError:
+            pass
+
+    async def _read_playit_stream(self, stream):
+        try:
+            while True:
+                line_bytes = await stream.readline()
+                if not line_bytes:
+                    break
+                line = line_bytes.decode('utf-8', errors='replace').strip()
+                if line:
+                    # Print clean playit tunnel logs directly in panel console
+                    self._append_log(f"[playit.gg]: {line}")
+        except Exception:
             pass
 
 # Instantiate singleton process manager

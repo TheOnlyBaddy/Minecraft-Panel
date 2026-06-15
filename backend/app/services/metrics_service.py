@@ -87,7 +87,8 @@ class MetricsService:
             "active_players": active_players,
             "active_players_list": active_players_list,
             "server_status": process_manager.status,
-            "server_address": settings.MINECRAFT_SERVER_ADDR
+            "server_address": settings.MINECRAFT_SERVER_ADDR,
+            "minecraft_version": settings.MINECRAFT_VERSION
         }
 
     async def _metrics_loop(self):

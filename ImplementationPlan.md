@@ -84,10 +84,11 @@ Spawning the Minecraft Java process, monitoring status, and closing it safely.
 
 ### Tasks
 1. Design `ServerProcessInterface` to permit future extensibility.
-2. Implement python `subprocess.Popen` configuration within the `ProcessManager`.
+2. Implement python `subprocess.Popen` / `asyncio.create_subprocess_exec` configuration within the `ProcessManager`. Support cascading launch: prefer `start.bat` (Windows) or `start.sh` (Linux), fall back to direct `java -jar` with configurable RAM (`-Xms6G -Xmx6G` defaults).
 3. Implement graceful stop script (sending `stop\n` to subprocess stdin pipe).
 4. Build background watcher thread to check process exit code and trigger DB crash events.
 5. Expose POST API endpoints to start, stop, and restart processes.
+6. Implement playit.gg tunnel auto-detection: check for `playit.exe`/`playit` binary in the server directory, launch as async subprocess, stream output with `[playit.gg]:` prefix, and terminate alongside the server.
 
 ### Dependencies
 * Phase 1 (Auth checks required for process actions).
@@ -99,6 +100,7 @@ Spawning the Minecraft Java process, monitoring status, and closing it safely.
 * Triggering "Start Server" spawns the `java` process in the background.
 * Stopping the server sends the console command, saves world files, and terminates the subprocess cleanly.
 * Process crashes register as `CRASHED` in the panel state indicator.
+* If `playit.exe` is detected in the server directory, the tunnel agent starts automatically alongside the server and is terminated when the server stops.
 
 ---
 
@@ -114,6 +116,8 @@ Exposing real-time system metrics to the frontend using WebSockets.
 * Dashboard UI showing hardware graphs and server status controls.
 * Metrics database archiving background worker.
 * Web Audio API synthesized chimes controller for lifecycle and player events.
+* Dynamic panel branding via `PANEL_NAME` env var and `/api/info` endpoint.
+* Dynamic logo detection (`/logo.png` with shield fallback) and background detection (`/background.png` with GPU-accelerated panning animation).
 
 ### Tasks
 1. Set up a background metrics loop utilizing the `psutil` library.
@@ -123,6 +127,9 @@ Exposing real-time system metrics to the frontend using WebSockets.
 5. Create UI status banner representing the server state machine status.
 6. Implement client-side Web Audio API synthesizers for started/stopped/restarted/joined/left events.
 7. Build comparison hook tracking online players list and showing join/leave toast alerts.
+8. Implement `/api/info` endpoint returning dynamic panel name from `PANEL_NAME` env var.
+9. Build Logo component with HEAD preload detection for `/logo.png` and emerald shield SVG fallback.
+10. Build background preload system detecting `/background.png` or `/background.jpg`, applying GPU-accelerated `translate3d` panning CSS animation (100-second loop).
 
 ### Dependencies
 * Phase 2 completed.
@@ -153,7 +160,7 @@ Building the interactive command console window.
 1. Build stdout/stderr reader thread to parse Minecraft log outputs.
 2. Implement circular log buffer (last 2,000 lines) in backend memory.
 3. Expose WebSocket console connection that pushes log frames in real time.
-4. Build terminal component with search, filter, and color formatting.
+4. Build terminal component with search, filter, color formatting, and tab-triggered autocomplete suggestions for Minecraft commands (e.g., `/say`, `/op`, `/whitelist add`).
 5. Create POST route for executing console inputs, validating characters.
 6. Commit every executed command to the `audit_logs` database table.
 
@@ -311,3 +318,37 @@ Packaging the modular monolith for host system deployments.
 ### Definition of Done
 * System service boots panel on machine startup.
 * Reverse proxy delivers panel UI over HTTPS.
+
+---
+
+## Phase 10: Mobile Responsive Adaptation
+Adapting the panel for phone browser viewports.
+
+### Objectives
+* Ensure the full panel is operable on mobile phone browsers.
+* Prevent horizontal scrolling and content overflow on small screens.
+
+### Deliverables
+* Sliding sidebar drawer with hamburger menu toggle.
+* Touch-dismiss backdrop overlay.
+* Card-based table fallback layouts for data tables.
+* Vite LAN binding (`host: true`) for zero-config mobile access.
+
+### Tasks
+1. Convert the desktop collapsible sidebar into a sliding drawer overlay for viewports under `768px`.
+2. Add a hamburger menu (☰) button visible only on mobile that toggles the drawer.
+3. Implement a semi-transparent backdrop that dismisses the drawer on tap.
+4. Convert AccessTab user table and audit trail table into vertically stacked profile cards on mobile.
+5. Configure Vite dev server with `host: true` to bind to `0.0.0.0` for LAN access.
+6. Test responsive layouts on common mobile viewport sizes (375px, 414px, 390px).
+
+### Dependencies
+* Phase 3 and Phase 4 completed.
+
+### Risks
+* Z-index conflicts between drawer overlay and existing modals/toasts. (Mitigation: Use a dedicated z-index layer system).
+
+### Definition of Done
+* The full panel is navigable and functional on a phone browser connected to the same LAN.
+* Tables render as cards without horizontal scrolling on screens under 768px.
+* Sidebar drawer opens and closes smoothly with touch interactions.

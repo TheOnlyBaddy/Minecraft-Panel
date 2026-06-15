@@ -17,9 +17,10 @@ class Settings(BaseSettings):
         os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../Minecraft Server"))
     )
     MINECRAFT_JAR_NAME: str = "paper.jar"
-    MINECRAFT_MIN_RAM: str = "1G"
-    MINECRAFT_MAX_RAM: str = "2G"
+    MINECRAFT_MIN_RAM: str = "6G"
+    MINECRAFT_MAX_RAM: str = "6G"
     MINECRAFT_SERVER_ADDR: str = os.getenv("MINECRAFT_SERVER_ADDR", "192.168.1.13:25565")
+    MINECRAFT_VERSION: str = os.getenv("MINECRAFT_VERSION", "26.1.2")
     # Panel Branding Name
     PANEL_NAME: str = os.getenv("PANEL_NAME", "DEEP SURVIVAL")
 
