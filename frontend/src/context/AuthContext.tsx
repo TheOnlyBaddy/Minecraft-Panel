@@ -23,6 +23,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [panelName, setPanelName] = useState('DEEP SURVIVAL');
 
+  useEffect(() => {
+    document.title = `${panelName} Panel`;
+  }, [panelName]);
+
   const checkAuth = async (): Promise<User | null> => {
     try {
       const response = await fetch('/api/auth/me');
