@@ -32,7 +32,7 @@ async def login(
     # Generate token
     expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     token = create_access_token(subject=user.id, expires_delta=expires_delta)
-    expires_at = datetime.now(timezone.utc) + expires_delta
+    expires_at = datetime.utcnow() + expires_delta
     
     # Log session to database
     await AuthService.create_session(db, user.id, token, expires_at)
