@@ -28,6 +28,13 @@ class ProcessManager:
             self._initialized = True
 
     async def start(self):
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("start_server")
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return
+
         if self.status in ("STARTING", "RUNNING"):
             raise HTTPException(status_code=400, detail="Server is already active or starting")
 
@@ -138,6 +145,13 @@ class ProcessManager:
             raise e
 
     async def stop(self):
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("stop_server")
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return
+
         if not self.process or self.status == "STOPPED":
             raise HTTPException(status_code=400, detail="Server is not running")
 
@@ -157,6 +171,11 @@ class ProcessManager:
             await self.kill()
 
     async def kill(self):
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            await agent_coordinator.send_request("kill_server")
+            return
+
         if not self.process:
             return
         
@@ -190,6 +209,11 @@ class ProcessManager:
                 await db.commit()
 
     async def write_stdin(self, command: str):
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            await agent_coordinator.send_request("write_stdin", {"command": command})
+            return
+
         if not self.process or not self.process.stdin:
             return
         
@@ -338,6 +362,19 @@ class ProcessManager:
             if loop.is_running():
                 from app.services.console_service import console_service
                 loop.create_task(console_service.broadcast(formatted_line))
+        except RuntimeError:
+            pass
+
+    def _append_log_direct(self, line: str):
+        self.log_buffer.append(line)
+        if len(self.log_buffer) > self.max_log_lines:
+            self.log_buffer.pop(0)
+
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_running():
+                from app.services.console_service import console_service
+                loop.create_task(console_service.broadcast(line))
         except RuntimeError:
             pass
 

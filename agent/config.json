@@ -1,0 +1,8 @@
+{
+  "backend_url": "ws://localhost:8000",
+  "agent_token": "super-secret-agent-token-123456",
+  "server_dir": "C:\\Users\\barnw\\OneDrive\\Documents\\Projects\\Minecraft\\Minecraft Server",
+  "jar_name": "paper.jar",
+  "min_ram": "6G",
+  "max_ram": "6G"
+}

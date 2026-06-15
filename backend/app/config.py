@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     # Panel Branding Name
     PANEL_NAME: str = os.getenv("PANEL_NAME", "DEEP SURVIVAL")
 
+    # Agent Split Configuration
+    AGENT_TOKEN: str = os.getenv("AGENT_TOKEN", "")
+
+    @property
+    def is_remote_mode(self) -> bool:
+        return self.AGENT_TOKEN != ""
+
     class Config:
         case_sensitive = True
 

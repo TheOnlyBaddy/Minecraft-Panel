@@ -84,6 +84,27 @@ class BackupService:
         is_running = process_manager.status == "RUNNING"
         
         try:
+            if settings.is_remote_mode:
+                from app.services.agent_coordinator import agent_coordinator
+                if is_running:
+                    await process_manager.write_stdin("save-off")
+                    await process_manager.write_stdin("save-all")
+                    await asyncio.sleep(2)
+                res = await agent_coordinator.send_request("create_backup")
+                if res.get("status") == "error":
+                    raise Exception(res.get("detail"))
+                
+                # Update database record using remote details
+                backup.filename = res["name"]
+                # Store backups dir path on Render (which is fake but matches schema)
+                backup.filepath = os.path.join(self.backups_dir, res["name"])
+                backup.file_size = res.get("sizeBytes", 0)
+                backup.checksum = "successful"
+                backup.status = "SUCCESSFUL"
+                await db.commit()
+                await db.refresh(backup)
+                return backup
+
             if is_running:
                 # Flush save buffers and disable active world writing
                 await process_manager.write_stdin("save-off")
@@ -109,7 +130,7 @@ class BackupService:
 
         except Exception as e:
             # Mark backup as failed and remove partial zip file
-            if os.path.exists(filepath_temp):
+            if not settings.is_remote_mode and os.path.exists(filepath_temp):
                 try:
                     os.remove(filepath_temp)
                 except Exception:
@@ -127,6 +148,21 @@ class BackupService:
         return backup
 
     async def restore_backup(self, db: AsyncSession, backup: Backup) -> None:
+        if settings.is_remote_mode:
+            was_running = process_manager.status in ("RUNNING", "STARTING")
+            if was_running:
+                await process_manager.stop()
+                await asyncio.sleep(2)
+            try:
+                from app.services.agent_coordinator import agent_coordinator
+                res = await agent_coordinator.send_request("restore_backup", {"backup_name": backup.filename})
+                if res.get("status") == "error":
+                    raise Exception(res.get("detail"))
+            finally:
+                if was_running:
+                    await process_manager.start()
+            return
+
         if not os.path.exists(backup.filepath):
             raise FileNotFoundError(f"Backup file not found on disk: {backup.filepath}")
 
@@ -165,6 +201,15 @@ class BackupService:
                 await process_manager.start()
 
     async def delete_backup(self, db: AsyncSession, backup: Backup) -> None:
+        if settings.is_remote_mode:
+            try:
+                from app.services.agent_coordinator import agent_coordinator
+                await agent_coordinator.send_request("delete_file", {"path": f"backups/{backup.filename}"})
+            except Exception as e:
+                print(f"[Backup File Deletion Error]: {str(e)}")
+            await BackupRepository.delete(db, backup)
+            return
+
         if os.path.exists(backup.filepath):
             try:
                 os.remove(backup.filepath)

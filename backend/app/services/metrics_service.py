@@ -22,6 +22,7 @@ class MetricsService:
             self.is_running = False
             self.session_factory = None
             self._loop_task = None
+            self.latest_agent_metrics = None
             self._initialized = True
 
     async def connect(self, websocket: WebSocket):
@@ -91,17 +92,46 @@ class MetricsService:
             "minecraft_version": settings.MINECRAFT_VERSION
         }
 
+    def feed_agent_metrics(self, data: dict):
+        metrics = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "cpu_percent": data.get("cpu_percent", 0.0),
+            "memory_used": data.get("memory_used", 0),
+            "memory_total": data.get("memory_total", 0),
+            "disk_used": data.get("disk_used", 0),
+            "disk_total": data.get("disk_total", 0),
+            "active_players": data.get("active_players", 0),
+            "active_players_list": data.get("active_players_list", []),
+            "server_status": data.get("server_status", "STOPPED"),
+            "server_address": settings.MINECRAFT_SERVER_ADDR,
+            "minecraft_version": settings.MINECRAFT_VERSION
+        }
+        self.latest_agent_metrics = metrics
+        
+        # Broadcast to UI clients immediately
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.broadcast(metrics))
+        except Exception:
+            pass
+
     async def _metrics_loop(self):
         counter = 0
         from app.db.session import SessionLocal
         
         while self.is_running:
             try:
-                metrics = self.get_current_metrics()
-                
-                # 1. Broadcast to all active WebSocket connections
-                if self.active_connections:
-                    await self.broadcast(metrics)
+                if settings.is_remote_mode:
+                    metrics = self.latest_agent_metrics
+                    if metrics is None:
+                        await asyncio.sleep(2)
+                        continue
+                else:
+                    metrics = self.get_current_metrics()
+                    # 1. Broadcast to all active WebSocket connections
+                    if self.active_connections:
+                        await self.broadcast(metrics)
                 
                 # 2. Write to SQLite once every 60 seconds (30 iterations of 2 seconds)
                 counter += 1

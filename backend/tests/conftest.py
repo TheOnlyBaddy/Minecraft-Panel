@@ -8,6 +8,14 @@ from app.main import app as fastapi_app
 from app.db.session import get_db
 from app.models.base import Base
 import app.models
+from app.config import settings
+
+# Disable remote agent mode for tests
+settings.AGENT_TOKEN = ""
+
+# Mock shutil.which to prevent host playit.exe detection during testing
+import shutil
+shutil.which = lambda *args, **kwargs: None
 
 # Memory-backed SQLite engine for isolated test environments
 DATABASE_URL_TEST = "sqlite+aiosqlite:///./test.db"

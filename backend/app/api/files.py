@@ -26,6 +26,25 @@ async def list_files(
     current_user: User = Depends(require_admin)
 ):
     try:
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            import time
+            res = await agent_coordinator.send_request("list_files", {"path": path})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            results = []
+            for item in res.get("items", []):
+                is_editable = item["name"].endswith(TEXT_EXTENSIONS) if not item["isDir"] else False
+                results.append({
+                    "name": item["name"],
+                    "isDir": item["isDir"],
+                    "sizeBytes": item["sizeBytes"],
+                    "lastModified": time.time(),
+                    "isEditable": is_editable
+                })
+            results.sort(key=lambda x: (not x["isDir"], x["name"].lower()))
+            return results
+
         # Resolve target directory path safely
         target_dir = config_service.safe_resolve_path(path)
         
@@ -65,6 +84,13 @@ async def read_file_content(
     current_user: User = Depends(require_admin)
 ):
     try:
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("read_file", {"path": path})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return {"content": res.get("content", "")}
+
         target_file = config_service.safe_resolve_path(path)
         
         if not os.path.exists(target_file):
@@ -104,6 +130,25 @@ async def write_file_content(
     current_user: User = Depends(require_admin)
 ):
     try:
+        if settings.is_remote_mode:
+            # Protect paper.jar from being overwritten
+            if payload.path.strip().endswith(settings.MINECRAFT_JAR_NAME):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Modifying the main server JAR file is forbidden."
+                )
+            # Ensure it's a text extension
+            if not payload.path.endswith(TEXT_EXTENSIONS):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Writing to non-text or binary files is forbidden."
+                )
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("write_file", {"path": payload.path, "content": payload.content})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return {"status": "success", "detail": "File saved successfully"}
+
         target_file = config_service.safe_resolve_path(payload.path)
         
         # Protect paper.jar from being overwritten
@@ -140,6 +185,19 @@ async def delete_file_or_dir(
     current_user: User = Depends(require_admin)
 ):
     try:
+        if settings.is_remote_mode:
+            # Protect paper.jar
+            if path.strip().endswith(settings.MINECRAFT_JAR_NAME):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Deleting the main server JAR file is forbidden."
+                )
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("delete_file", {"path": path})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return {"status": "success", "detail": f"Successfully deleted {path}"}
+
         target_path = config_service.safe_resolve_path(path)
         
         if not os.path.exists(target_path):

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.db.session import engine, SessionLocal
 from app.models.base import Base
-from app.api import auth, server, telemetry, console, backup, config, audit, players, files, worlds, users, plugins
+from app.api import auth, server, telemetry, console, backup, config, audit, players, files, worlds, users, plugins, agent
 from app.services.metrics_service import metrics_service
 
 app = FastAPI(
@@ -69,6 +69,7 @@ app.include_router(files.router, prefix=settings.API_V1_STR)
 app.include_router(worlds.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)
 app.include_router(plugins.router, prefix=settings.API_V1_STR)
+app.include_router(agent.router, prefix=settings.API_V1_STR)
 
 @app.get("/api/info")
 async def get_panel_info():
