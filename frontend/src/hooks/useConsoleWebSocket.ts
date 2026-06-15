@@ -25,8 +25,15 @@ export function useConsoleWebSocket(): UseConsoleWebSocketResult {
       socketRef.current.close(1000);
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/server/console`;
+    const apiBase = import.meta.env.VITE_API_URL;
+    let wsUrl = '';
+    if (apiBase) {
+      const wsBase = apiBase.replace('http://', 'ws://').replace('https://', 'wss://').replace(/\/$/, '');
+      wsUrl = `${wsBase}/api/server/console`;
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsUrl = `${protocol}//${window.location.host}/api/server/console`;
+    }
 
     const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
