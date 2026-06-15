@@ -32,4 +32,12 @@ class ConsoleService:
                 # Remove dead/broken connections
                 self.disconnect(connection)
 
+    async def broadcast_clear(self):
+        # Broadcast history wipe to all active console connections
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json({"type": "history", "lines": []})
+            except Exception:
+                self.disconnect(connection)
+
 console_service = ConsoleService()

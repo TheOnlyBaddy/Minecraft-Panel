@@ -29,6 +29,15 @@ class ProcessManager:
 
     async def start(self):
         if settings.is_remote_mode:
+            self.log_buffer.clear()
+            from app.services.console_service import console_service
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(console_service.broadcast_clear())
+            except Exception:
+                pass
+            
             from app.services.agent_coordinator import agent_coordinator
             res = await agent_coordinator.send_request("start_server")
             if res.get("status") == "error":
@@ -86,6 +95,13 @@ class ProcessManager:
         try:
             self.status = "STARTING"
             self.log_buffer.clear()
+            from app.services.console_service import console_service
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(console_service.broadcast_clear())
+            except Exception:
+                pass
             self._append_log("[Panel]: Spawning Minecraft child subprocess...")
 
             # Run using asyncio subprocess
