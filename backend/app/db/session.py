@@ -13,9 +13,11 @@ connect_args = {}
 if db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 else:
-    # Disable prepared statement cache for PostgreSQL to support PgBouncer/Supabase transaction pooler
+    # Disable prepared statement cache and force unique names for PgBouncer/Supabase transaction pooler
+    import uuid
     connect_args["prepared_statement_cache_size"] = 0
     connect_args["statement_cache_size"] = 0
+    connect_args["prepared_statement_name_func"] = lambda: f"__asyncpg_{uuid.uuid4()}__"
 
 engine = create_async_engine(
     db_url,
