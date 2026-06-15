@@ -65,6 +65,41 @@ def write_json_file(filepath: str, data: list) -> None:
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 
+MAPPING = {
+    "whitelist": "whitelist.json",
+    "ops": "ops.json",
+    "banned-players": "banned-players.json",
+    "banned-ips": "banned-ips.json"
+}
+
+async def read_player_list(list_type: str) -> list:
+    if settings.is_remote_mode:
+        from app.services.agent_coordinator import agent_coordinator
+        filename = MAPPING[list_type]
+        res = await agent_coordinator.send_request("read_file", {"path": filename})
+        if res.get("status") == "success":
+            try:
+                return json.loads(res.get("content", "[]"))
+            except Exception:
+                return []
+        return []
+    
+    filepath = get_file_path(list_type)
+    return read_json_file(filepath)
+
+async def write_player_list(list_type: str, data: list) -> None:
+    if settings.is_remote_mode:
+        from app.services.agent_coordinator import agent_coordinator
+        filename = MAPPING[list_type]
+        content = json.dumps(data, indent=2)
+        res = await agent_coordinator.send_request("write_file", {"path": filename, "content": content})
+        if res.get("status") == "error":
+            raise HTTPException(status_code=400, detail=res.get("detail"))
+        return
+        
+    filepath = get_file_path(list_type)
+    write_json_file(filepath, data)
+
 @router.get("/online")
 async def get_online_players(
     current_user: User = Depends(require_admin)
@@ -80,16 +115,14 @@ async def get_player_list(
     list_type: Literal["whitelist", "ops", "banned-players", "banned-ips"],
     current_user: User = Depends(require_admin)
 ):
-    filepath = get_file_path(list_type)
-    return read_json_file(filepath)
+    return await read_player_list(list_type)
 
 @router.post("/add")
 async def add_player_to_list(
     payload: PlayerAddPayload,
     current_user: User = Depends(require_admin)
 ):
-    filepath = get_file_path(payload.list_type)
-    data = read_json_file(filepath)
+    data = await read_player_list(payload.list_type)
     val = payload.username_or_ip.strip()
 
     if not val:
@@ -138,7 +171,7 @@ async def add_player_to_list(
                 "reason": payload.reason
             })
 
-    write_json_file(filepath, data)
+    await write_player_list(payload.list_type, data)
     return {"status": "success", "detail": f"Added {val} to {payload.list_type}"}
 
 @router.post("/remove")
@@ -146,8 +179,7 @@ async def remove_player_from_list(
     payload: PlayerRemovePayload,
     current_user: User = Depends(require_admin)
 ):
-    filepath = get_file_path(payload.list_type)
-    data = read_json_file(filepath)
+    data = await read_player_list(payload.list_type)
     val = payload.username_or_ip.strip()
 
     if not val:
@@ -163,5 +195,5 @@ async def remove_player_from_list(
     if len(data) == original_len:
         raise HTTPException(status_code=404, detail=f"Entry {val} not found in {payload.list_type}")
 
-    write_json_file(filepath, data)
+    await write_player_list(payload.list_type, data)
     return {"status": "success", "detail": f"Removed {val} from {payload.list_type}"}
