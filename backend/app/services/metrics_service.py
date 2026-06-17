@@ -89,7 +89,8 @@ class MetricsService:
             "active_players_list": active_players_list,
             "server_status": process_manager.status,
             "server_address": settings.MINECRAFT_SERVER_ADDR,
-            "minecraft_version": settings.MINECRAFT_VERSION
+            "minecraft_version": settings.MINECRAFT_VERSION,
+            "agent_connected": True
         }
 
     def feed_agent_metrics(self, data: dict):
@@ -104,7 +105,8 @@ class MetricsService:
             "active_players_list": data.get("active_players_list", []),
             "server_status": data.get("server_status", "STOPPED"),
             "server_address": settings.MINECRAFT_SERVER_ADDR,
-            "minecraft_version": settings.MINECRAFT_VERSION
+            "minecraft_version": settings.MINECRAFT_VERSION,
+            "agent_connected": True
         }
         self.latest_agent_metrics = metrics
         
@@ -123,6 +125,29 @@ class MetricsService:
         while self.is_running:
             try:
                 if settings.is_remote_mode:
+                    from app.services.agent_coordinator import agent_coordinator
+                    if not agent_coordinator.is_connected:
+                        self.latest_agent_metrics = None
+                        # Broadcast offline state
+                        metrics = {
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "cpu_percent": 0.0,
+                            "memory_used": 0,
+                            "memory_total": 0,
+                            "disk_used": 0,
+                            "disk_total": 0,
+                            "active_players": 0,
+                            "active_players_list": [],
+                            "server_status": "OFFLINE",
+                            "server_address": settings.MINECRAFT_SERVER_ADDR,
+                            "minecraft_version": settings.MINECRAFT_VERSION,
+                            "agent_connected": False
+                        }
+                        if self.active_connections:
+                            await self.broadcast(metrics)
+                        await asyncio.sleep(2)
+                        continue
+                        
                     metrics = self.latest_agent_metrics
                     if metrics is None:
                         await asyncio.sleep(2)

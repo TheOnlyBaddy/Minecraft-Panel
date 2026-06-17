@@ -12,6 +12,7 @@ interface PluginsTabProps {
   isUploadingPluginFile: boolean;
   setActiveTab: (tab: any) => void;
   setCurrentFilePath: (path: string) => void;
+  isAgentOffline: boolean;
 }
 
 const PluginsTab: React.FC<PluginsTabProps> = ({
@@ -25,7 +26,20 @@ const PluginsTab: React.FC<PluginsTabProps> = ({
   isUploadingPluginFile,
   setActiveTab,
   setCurrentFilePath,
+  isAgentOffline,
 }) => {
+  if (isAgentOffline) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-bg-secondary border border-status-error/25 bg-status-error/5 text-center space-y-3 font-sans shadow-mc-sm select-none">
+        <div className="w-12 h-12 rounded-none bg-status-error/10 flex items-center justify-center border border-status-error/20">
+          <Layers className="w-6 h-6 text-status-error" />
+        </div>
+        <strong className="block text-xs font-pixel text-status-error uppercase tracking-wider">Local Agent Offline</strong>
+        <span className="text-text-secondary text-xs font-mono max-w-sm">The Minecraft Local Agent is offline. Please make sure the agent is running on your local PC to inspect or manage server plugins.</span>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-bg-secondary border border-white/5 p-6 shadow-mc-sm select-none font-sans">
       

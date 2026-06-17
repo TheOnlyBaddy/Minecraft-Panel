@@ -1494,6 +1494,7 @@ const Dashboard: React.FC = () => {
                   isUploadingPluginFile={isUploadingPluginFile}
                   setActiveTab={setActiveTab}
                   setCurrentFilePath={setCurrentFilePath}
+                  isAgentOffline={telemetryData?.agent_connected === false}
                 />
               )}
 
@@ -1525,6 +1526,7 @@ const Dashboard: React.FC = () => {
                   handleResetWorld={handleResetWorld}
                   handleUploadWorld={handleUploadWorld}
                   formatMB={formatMB}
+                  isAgentOffline={telemetryData?.agent_connected === false}
                 />
               )}
 

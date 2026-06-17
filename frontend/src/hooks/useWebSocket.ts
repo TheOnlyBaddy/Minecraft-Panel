@@ -12,6 +12,7 @@ export interface TelemetryData {
   server_status: 'STOPPED' | 'STARTING' | 'RUNNING' | 'STOPPING' | 'CRASHED';
   server_address: string;
   minecraft_version?: string;
+  agent_connected?: boolean;
 }
 
 interface UseWebSocketResult {

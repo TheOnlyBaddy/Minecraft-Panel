@@ -10,6 +10,7 @@ interface WorldsTabProps {
   handleResetWorld: () => void;
   handleUploadWorld: (file: File) => void;
   formatMB: (bytes: number) => string;
+  isAgentOffline: boolean;
 }
 
 const WorldsTab: React.FC<WorldsTabProps> = ({
@@ -21,8 +22,21 @@ const WorldsTab: React.FC<WorldsTabProps> = ({
   handleResetWorld,
   handleUploadWorld,
   formatMB,
+  isAgentOffline,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+
+  if (isAgentOffline) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-bg-secondary border border-status-error/25 bg-status-error/5 text-center space-y-3 font-sans shadow-mc-sm select-none">
+        <div className="w-12 h-12 rounded-none bg-status-error/10 flex items-center justify-center border border-status-error/20">
+          <ShieldAlert className="w-6 h-6 text-status-error" />
+        </div>
+        <strong className="block text-xs font-pixel text-status-error uppercase tracking-wider">Local Agent Offline</strong>
+        <span className="text-text-secondary text-xs font-mono max-w-sm">The Minecraft Local Agent is offline. Please start the agent on your local PC to inspect or manage worlds.</span>
+      </div>
+    );
+  }
 
   if (isLoadingWorldStats) {
     return (
