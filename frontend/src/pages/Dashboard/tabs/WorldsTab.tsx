@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Globe, Download, ShieldAlert, Trash2 } from 'lucide-react';
 
 interface WorldsTabProps {
@@ -22,6 +22,8 @@ const WorldsTab: React.FC<WorldsTabProps> = ({
   handleUploadWorld,
   formatMB,
 }) => {
+  const [isDragging, setIsDragging] = useState(false);
+
   if (isLoadingWorldStats) {
     return (
       <div className="flex items-center justify-center py-16 bg-bg-secondary border border-white/5 shadow-mc-sm">
@@ -96,14 +98,33 @@ const WorldsTab: React.FC<WorldsTabProps> = ({
             </div>
 
             {/* Upload Card */}
-            <div className="bg-bg-surface border border-white/5 p-5 flex flex-col justify-between gap-4 shadow-mc-sm">
+            <div 
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                  handleUploadWorld(files[0]);
+                }
+              }}
+              className={`bg-bg-surface border p-5 flex flex-col justify-between gap-4 shadow-mc-sm transition-all duration-150 ${
+                isDragging 
+                  ? 'border-mc-emerald bg-mc-emerald/5 shadow-[0_0_12px_rgba(46,204,113,0.15)] scale-[1.01]' 
+                  : 'border-white/5'
+              }`}
+            >
               <div>
                 <h4 className="text-xs font-pixel uppercase tracking-wider text-white">Upload World (ZIP)</h4>
-                <p className="text-xs text-text-secondary mt-1">
-                  Upload a <code>.zip</code> file containing your world folder. The server will stop, files extract, and then start.
+                <p className="text-xs text-text-secondary mt-1 font-sans">
+                  Upload or drag & drop a <code>.zip</code> file containing your world folder. The server will stop, files extract, and then start.
                 </p>
               </div>
-              <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
+              <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1 font-sans">
                 <input
                   type="file"
                   accept=".zip"
@@ -119,13 +140,19 @@ const WorldsTab: React.FC<WorldsTabProps> = ({
                 />
                 <label
                   htmlFor="world-upload-input"
-                  className={`px-4 py-2 bg-bg-surface border border-white/10 hover:border-mc-emerald/30 text-text-secondary hover:text-white font-pixel font-bold text-xs tracking-wider transition-all flex items-center gap-2 cursor-pointer ${isUploadingWorld ? 'opacity-50 pointer-events-none' : ''}`}
+                  className={`px-4 py-2 bg-bg-surface border border-white/10 hover:border-mc-emerald/30 text-text-secondary hover:text-white font-pixel font-bold text-xs tracking-wider transition-all flex items-center gap-2 cursor-pointer ${
+                    isUploadingWorld ? 'opacity-50 pointer-events-none' : ''
+                  }`}
                 >
                   <Globe className="w-4 h-4" />
-                  {isUploadingWorld ? 'Uploading...' : 'Choose ZIP File'}
+                  {isUploadingWorld ? 'Uploading...' : isDragging ? 'Drop ZIP Here' : 'Choose ZIP File'}
                 </label>
-                {isUploadingWorld && (
+                {isUploadingWorld ? (
                   <span className="text-[10px] font-mono text-mc-emerald animate-pulse">Extracting world...</span>
+                ) : isDragging ? (
+                  <span className="text-[10px] font-mono text-mc-emerald animate-pulse">Release to upload!</span>
+                ) : (
+                  <span className="text-[10px] font-mono text-text-muted">Drag .zip here</span>
                 )}
               </div>
             </div>

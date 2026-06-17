@@ -94,6 +94,31 @@ const Dashboard: React.FC = () => {
   const [isResettingWorld, setIsResettingWorld] = useState(false);
   const [isUploadingWorld, setIsUploadingWorld] = useState(false);
 
+  // Custom confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   // Access (Users list) states
   const [usersList, setUsersList] = useState<any[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -340,19 +365,24 @@ const Dashboard: React.FC = () => {
   };
 
   const handleClearLog = async () => {
-    if (!confirm('Are you sure you want to clear latest.log?')) return;
-    try {
-      const response = await fetch('/api/server/logs/clear', { method: 'POST' });
-      if (response.ok) {
-        showToast('Log file cleared successfully.', 'success');
-        fetchLatestLog();
-      } else {
-        showToast('Failed to clear log file.', 'error');
+    showConfirm(
+      'Clear Logs',
+      'Are you sure you want to clear latest.log? This will empty the active log file permanently.',
+      async () => {
+        try {
+          const response = await fetch('/api/server/logs/clear', { method: 'POST' });
+          if (response.ok) {
+            showToast('Log file cleared successfully.', 'success');
+            fetchLatestLog();
+          } else {
+            showToast('Failed to clear log file.', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to clear log file.', 'error');
+        }
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to clear log file.', 'error');
-    }
+    );
   };
 
   const handleCreateBackup = async () => {
@@ -376,43 +406,53 @@ const Dashboard: React.FC = () => {
   };
 
   const handleRestoreBackup = async (id: number, filename: string) => {
-    if (!confirm(`Warning: Restoring backup "${filename}" will overwrite current world files. Proceed?`)) return;
-    setRestoringBackupId(id);
-    showToast('Restoring backup in progress, please wait...', 'info');
-    try {
-      const response = await fetch(`/api/backups/restore/${id}`, { method: 'POST' });
-      if (response.ok) {
-        showToast('Backup restored successfully. Please restart server.', 'success');
-        fetchBackups();
-      } else {
-        const errDetails = await response.json();
-        showToast(`Restore failed: ${errDetails.detail || 'Unknown error'}`, 'error');
+    showConfirm(
+      'Restore Backup',
+      `Warning: Restoring backup "${filename}" will overwrite all current server files. Any unsaved progress will be permanently lost. Proceed?`,
+      async () => {
+        setRestoringBackupId(id);
+        showToast('Restoring backup in progress, please wait...', 'info');
+        try {
+          const response = await fetch(`/api/backups/restore/${id}`, { method: 'POST' });
+          if (response.ok) {
+            showToast('Backup restored successfully. Please restart server.', 'success');
+            fetchBackups();
+          } else {
+            const errDetails = await response.json();
+            showToast(`Restore failed: ${errDetails.detail || 'Unknown error'}`, 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to restore backup.', 'error');
+        } finally {
+          setRestoringBackupId(null);
+        }
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to restore backup.', 'error');
-    } finally {
-      setRestoringBackupId(null);
-    }
+    );
   };
 
   const handleDeleteBackup = async (id: number, filename: string) => {
-    if (!confirm(`Are you sure you want to delete backup "${filename}"?`)) return;
-    setDeletingBackupId(id);
-    try {
-      const response = await fetch(`/api/backups/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        showToast('Backup deleted successfully.', 'success');
-        fetchBackups();
-      } else {
-        showToast('Failed to delete backup.', 'error');
+    showConfirm(
+      'Delete Backup',
+      `Are you sure you want to permanently delete the backup archive "${filename}"? This action cannot be undone.`,
+      async () => {
+        setDeletingBackupId(id);
+        try {
+          const response = await fetch(`/api/backups/${id}`, { method: 'DELETE' });
+          if (response.ok) {
+            showToast('Backup deleted successfully.', 'success');
+            fetchBackups();
+          } else {
+            showToast('Failed to delete backup.', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to delete backup.', 'error');
+        } finally {
+          setDeletingBackupId(null);
+        }
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to delete backup.', 'error');
-    } finally {
-      setDeletingBackupId(null);
-    }
+    );
   };
 
   const fetchUsers = async () => {
@@ -467,19 +507,24 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDeleteUser = async (id: number, username: string) => {
-    if (!confirm(`Are you sure you want to delete user account "${username}"?`)) return;
-    try {
-      const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        showToast('User account deleted successfully.', 'success');
-        fetchUsers();
-      } else {
-        showToast('Failed to delete user.', 'error');
+    showConfirm(
+      'Delete User',
+      `Are you sure you want to permanently delete the administrator account "${username}"? They will lose all panel access.`,
+      async () => {
+        try {
+          const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+          if (response.ok) {
+            showToast('User account deleted successfully.', 'success');
+            fetchUsers();
+          } else {
+            showToast('Failed to delete user.', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to delete user.', 'error');
+        }
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to delete user.', 'error');
-    }
+    );
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -569,24 +614,30 @@ const Dashboard: React.FC = () => {
   };
 
   const handleUninstallPlugin = async (filename: string) => {
-    if (!confirm(`Are you sure you want to uninstall/delete "${filename}"?`)) return;
-    setIsUninstallingPlugin(prev => ({ ...prev, [filename]: true }));
-    try {
-      const response = await fetch(`/api/server/plugins?file_name=${filename}`, {
-        method: 'DELETE'
-      });
-      if (response.ok) {
-        showToast('Plugin uninstalled successfully. Please restart server.', 'success');
-        fetchInstalledPlugins();
-      } else {
-        showToast('Failed to uninstall plugin.', 'error');
+    showConfirm(
+      'Uninstall Plugin',
+      `Are you sure you want to permanently uninstall and delete the plugin "${filename}"? This will stop the server to release file locks before deleting the plugin.`,
+      async () => {
+        setIsUninstallingPlugin(prev => ({ ...prev, [filename]: true }));
+        try {
+          const response = await fetch(`/api/server/plugins?file_name=${filename}`, {
+            method: 'DELETE'
+          });
+          if (response.ok) {
+            showToast('Plugin uninstalled successfully. Please restart server.', 'success');
+            fetchInstalledPlugins();
+          } else {
+            const errDetails = await response.json();
+            showToast(`Failed to uninstall plugin: ${errDetails.detail || 'Unknown error'}`, 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to uninstall plugin due to network error.', 'error');
+        } finally {
+          setIsUninstallingPlugin(prev => ({ ...prev, [filename]: false }));
+        }
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to uninstall plugin.', 'error');
-    } finally {
-      setIsUninstallingPlugin(prev => ({ ...prev, [filename]: false }));
-    }
+    );
   };
 
   const fetchFiles = async () => {
@@ -665,22 +716,27 @@ const Dashboard: React.FC = () => {
   };
 
   const handleDeleteFile = async (path: string) => {
-    if (!confirm(`Are you sure you want to delete file "${path}"?`)) return;
-    try {
-      const params = new URLSearchParams({ path });
-      const response = await fetch(`/api/server/files/delete?${params.toString()}`, {
-        method: 'DELETE'
-      });
-      if (response.ok) {
-        showToast('File deleted successfully.', 'success');
-        fetchFiles();
-      } else {
-        showToast('Failed to delete file.', 'error');
+    showConfirm(
+      'Delete File',
+      `Are you sure you want to permanently delete "${path}"? This action is irreversible.`,
+      async () => {
+        try {
+          const params = new URLSearchParams({ path });
+          const response = await fetch(`/api/server/files/delete?${params.toString()}`, {
+            method: 'DELETE'
+          });
+          if (response.ok) {
+            showToast('File deleted successfully.', 'success');
+            fetchFiles();
+          } else {
+            showToast('Failed to delete file.', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to delete file.', 'error');
+        }
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to delete file.', 'error');
-    }
+    );
   };
 
   const fetchWorldStats = async () => {
@@ -704,27 +760,32 @@ const Dashboard: React.FC = () => {
   };
 
   const handleResetWorld = async () => {
-    if (!confirm('CRITICAL WARNING: This will stop the server and recursively delete all world folders! Continue?')) return;
-    const name = prompt('Type "RESET" to confirm:');
-    if (name !== 'RESET') {
-      showToast('Reset cancelled.', 'info');
-      return;
-    }
-    setIsResettingWorld(true);
-    try {
-      const response = await fetch('/api/server/worlds/reset', { method: 'POST' });
-      if (response.ok) {
-        showToast('Minecraft worlds successfully reset!', 'success');
-        fetchWorldStats();
-      } else {
-        showToast('Failed to reset worlds.', 'error');
+    showConfirm(
+      'CRITICAL: Reset World',
+      'This will stop the server and recursively delete all world folders! This action is irreversible and permanent. Type "RESET" in the next box to confirm.',
+      async () => {
+        const name = prompt('Type "RESET" to confirm:');
+        if (name !== 'RESET') {
+          showToast('Reset cancelled.', 'info');
+          return;
+        }
+        setIsResettingWorld(true);
+        try {
+          const response = await fetch('/api/server/worlds/reset', { method: 'POST' });
+          if (response.ok) {
+            showToast('Minecraft worlds successfully reset!', 'success');
+            fetchWorldStats();
+          } else {
+            showToast('Failed to reset worlds.', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Failed to reset worlds due to API error.', 'error');
+        } finally {
+          setIsResettingWorld(false);
+        }
       }
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to reset worlds due to API error.', 'error');
-    } finally {
-      setIsResettingWorld(false);
-    }
+    );
   };
 
   const handleUploadWorld = async (file: File) => {
@@ -1537,6 +1598,39 @@ const Dashboard: React.FC = () => {
 
         </div>
       </main>
+
+      {confirmModal.isOpen && (
+        <div 
+          className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200"
+          onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        >
+          <div 
+            className="relative bg-bg-secondary border border-white/10 p-6 md:p-8 w-full max-w-md shadow-mc-lg animate-in zoom-in-95 duration-200 select-none text-xs font-sans"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-pixel text-sm text-status-error mb-2">⚠️ {confirmModal.title}</h3>
+            <p className="text-text-secondary leading-relaxed mb-6 font-sans">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm();
+                }}
+                className="px-5 py-2.5 bg-gradient-to-r from-status-error to-red-800 hover:to-status-error text-white font-pixel font-bold text-xs tracking-wider border border-status-error/30 cursor-pointer hover:shadow-[0_0_10px_rgba(255,93,93,0.2)] transition-all flex-1"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2.5 bg-bg-surface border border-white/10 hover:border-white/20 text-text-secondary hover:text-white transition-colors cursor-pointer text-xs font-pixel"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

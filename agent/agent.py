@@ -475,7 +475,7 @@ class LocalAgent:
         results.sort(key=lambda x: x["name"].lower())
         return {"status": "success", "plugins": results}
 
-    def uninstall_plugin(self, file_name: str):
+    async def uninstall_plugin(self, file_name: str):
         if not file_name.endswith(".jar"):
             return {"status": "error", "detail": "Only .jar files can be uninstalled."}
         
@@ -487,7 +487,19 @@ class LocalAgent:
         if not os.path.exists(target_path):
             return {"status": "error", "detail": f"Plugin file {file_name} not found."}
             
-        os.remove(target_path)
+        was_running = self.status in ("STARTING", "RUNNING")
+        if was_running:
+            await self.send_log(f"[Agent]: Stopping server to uninstall plugin {file_name}...")
+            await self.stop_server()
+            await asyncio.sleep(2)
+
+        try:
+            os.remove(target_path)
+        except Exception as e:
+            if was_running:
+                await self.send_log(f"[Agent Warning]: Failed to delete plugin jar, restarting server...")
+                await self.start_server()
+            return {"status": "error", "detail": f"Failed to delete plugin file: {str(e)}"}
         
         # Also clean up configuration folders
         plugin_name_slug = os.path.splitext(file_name)[0]
@@ -502,9 +514,17 @@ class LocalAgent:
         for folder in folders_to_check:
             resolved_folder_path = os.path.abspath(os.path.join(plugins_dir, folder))
             if resolved_folder_path.startswith(plugins_dir) and os.path.exists(resolved_folder_path) and os.path.isdir(resolved_folder_path):
-                shutil.rmtree(resolved_folder_path)
-                deleted_folders.append(folder)
+                try:
+                    shutil.rmtree(resolved_folder_path)
+                    deleted_folders.append(folder)
+                except Exception as e:
+                    await self.send_log(f"[Agent Warning]: Failed to delete configuration folder {folder}: {e}")
                 break
+                
+        if was_running:
+            await self.send_log(f"[Agent]: Plugin {file_name} deleted. Restarting server...")
+            await self.start_server()
+            
         return {"status": "success", "deleted_folders": deleted_folders}
 
     def upload_plugin(self, file_name: str, content_b64: str):
@@ -697,7 +717,7 @@ class LocalAgent:
             elif mtype == "list_plugins":
                 response = self.list_plugins()
             elif mtype == "uninstall_plugin":
-                response = self.uninstall_plugin(msg.get("file_name", ""))
+                response = await self.uninstall_plugin(msg.get("file_name", ""))
             elif mtype == "upload_plugin":
                 response = self.upload_plugin(msg.get("file_name", ""), msg.get("content_b64", ""))
             elif mtype == "get_world_stats":
