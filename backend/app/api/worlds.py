@@ -2,7 +2,7 @@ import os
 import shutil
 import zipfile
 import tempfile
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTasks
 from app.config import settings
@@ -47,6 +47,13 @@ async def get_world_stats(current_user: User = Depends(require_admin)):
         config = await config_service.get_config()
         level_name = config.get("level-name", "world")
         
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("get_world_stats", {"level_name": level_name})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return res
+
         server_dir = os.path.abspath(settings.MINECRAFT_SERVER_DIR)
         world_path = os.path.join(server_dir, level_name)
         nether_path = os.path.join(server_dir, f"{level_name}_nether")
@@ -117,6 +124,13 @@ async def reset_world(current_user: User = Depends(require_admin)):
         config = await config_service.get_config()
         level_name = config.get("level-name", "world")
         
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("reset_world", {"level_name": level_name})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return res
+
         server_dir = os.path.abspath(settings.MINECRAFT_SERVER_DIR)
         world_path = os.path.join(server_dir, level_name)
         nether_path = os.path.join(server_dir, f"{level_name}_nether")
@@ -158,4 +172,73 @@ async def reset_world(current_user: User = Depends(require_admin)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to reset worlds: {str(e)}"
+        )
+
+@router.post("/upload")
+async def upload_world(
+    file: UploadFile = File(..., description="The world zip file to upload"),
+    current_user: User = Depends(require_admin)
+):
+    try:
+        if not file.filename.endswith(".zip"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only .zip files are allowed for world uploads."
+            )
+            
+        config = await config_service.get_config()
+        level_name = config.get("level-name", "world")
+        
+        if settings.is_remote_mode:
+            import base64
+            file_bytes = await file.read()
+            content_b64 = base64.b64encode(file_bytes).decode("utf-8")
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("upload_world", {"level_name": level_name, "content_b64": content_b64})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return res
+        else:
+            server_dir = os.path.abspath(settings.MINECRAFT_SERVER_DIR)
+            world_path = os.path.join(server_dir, level_name)
+            nether_path = os.path.join(server_dir, f"{level_name}_nether")
+            end_path = os.path.join(server_dir, f"{level_name}_the_end")
+            
+            was_running = process_manager.status in ("STARTING", "RUNNING")
+            if was_running:
+                await process_manager.stop()
+                import asyncio
+                await asyncio.sleep(2)
+                
+            # Purge old directories
+            for path in (world_path, nether_path, end_path):
+                if os.path.exists(path):
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
+                        
+            # Save uploaded zip temporarily
+            temp_zip = os.path.join(server_dir, "temp_world_upload.zip")
+            with open(temp_zip, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+                
+            # Extract
+            with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
+                zip_ref.extractall(server_dir)
+                
+            if os.path.exists(temp_zip):
+                os.remove(temp_zip)
+                
+            if was_running:
+                await process_manager.start()
+                
+            return {"status": "success", "detail": "World uploaded and applied successfully."}
+            
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"World upload failed: {str(e)}"
         )

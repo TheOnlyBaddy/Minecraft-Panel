@@ -5,8 +5,10 @@ interface WorldsTabProps {
   worldStats: any;
   isLoadingWorldStats: boolean;
   isResettingWorld: boolean;
+  isUploadingWorld: boolean;
   handleDownloadWorld: () => void;
   handleResetWorld: () => void;
+  handleUploadWorld: (file: File) => void;
   formatMB: (bytes: number) => string;
 }
 
@@ -14,8 +16,10 @@ const WorldsTab: React.FC<WorldsTabProps> = ({
   worldStats,
   isLoadingWorldStats,
   isResettingWorld,
+  isUploadingWorld,
   handleDownloadWorld,
   handleResetWorld,
+  handleUploadWorld,
   formatMB,
 }) => {
   if (isLoadingWorldStats) {
@@ -69,22 +73,62 @@ const WorldsTab: React.FC<WorldsTabProps> = ({
 
           </div>
 
-          {/* Footprint total size & Download */}
-          <div className="bg-bg-surface border border-white/5 p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-mc-sm">
-            <div>
-              <h4 className="text-xs font-pixel uppercase tracking-wider text-white">Total World Disk Footprint</h4>
-              <p className="text-xs text-text-secondary mt-1">
-                Combined storage size of all dimensions: <strong className="text-mc-emerald font-mono">{formatMB(worldStats.total_size)}</strong>
-              </p>
+          {/* Actions: Download and Upload Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Download Card */}
+            <div className="bg-bg-surface border border-white/5 p-5 flex flex-col justify-between gap-4 shadow-mc-sm">
+              <div>
+                <h4 className="text-xs font-pixel uppercase tracking-wider text-white">Download World Folder</h4>
+                <p className="text-xs text-text-secondary mt-1">
+                  Compresses the active dimension directory into a ZIP archive for local backups.
+                </p>
+              </div>
+              <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
+                <span className="text-[10px] font-mono text-text-muted">Total Size: <strong className="text-mc-emerald font-mono">{formatMB(worldStats.total_size)}</strong></span>
+                <button 
+                  onClick={handleDownloadWorld} 
+                  className="px-4 py-2 bg-gradient-to-r from-mc-emerald to-emerald-700 hover:to-mc-emerald text-bg-primary font-pixel font-bold text-xs tracking-wider border border-mc-emerald/30 cursor-pointer shadow-mc-sm hover:shadow-[0_0_10px_rgba(46,204,113,0.3)] transition-all flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4 fill-bg-primary" />
+                  Download
+                </button>
+              </div>
             </div>
-            
-            <button 
-              onClick={handleDownloadWorld} 
-              className="px-5 py-2.5 bg-gradient-to-r from-mc-emerald to-emerald-700 hover:to-mc-emerald text-bg-primary font-pixel font-bold text-xs tracking-wider border border-mc-emerald/30 cursor-pointer shadow-mc-sm hover:shadow-[0_0_10px_rgba(46,204,113,0.3)] transition-all flex items-center gap-2 shrink-0 w-full sm:w-auto justify-center"
-            >
-              <Download className="w-4 h-4 fill-bg-primary" />
-              Download World (ZIP)
-            </button>
+
+            {/* Upload Card */}
+            <div className="bg-bg-surface border border-white/5 p-5 flex flex-col justify-between gap-4 shadow-mc-sm">
+              <div>
+                <h4 className="text-xs font-pixel uppercase tracking-wider text-white">Upload World (ZIP)</h4>
+                <p className="text-xs text-text-secondary mt-1">
+                  Upload a <code>.zip</code> file containing your world folder. The server will stop, files extract, and then start.
+                </p>
+              </div>
+              <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
+                <input
+                  type="file"
+                  accept=".zip"
+                  id="world-upload-input"
+                  className="hidden"
+                  disabled={isUploadingWorld}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleUploadWorld(file);
+                    }
+                  }}
+                />
+                <label
+                  htmlFor="world-upload-input"
+                  className={`px-4 py-2 bg-bg-surface border border-white/10 hover:border-mc-emerald/30 text-text-secondary hover:text-white font-pixel font-bold text-xs tracking-wider transition-all flex items-center gap-2 cursor-pointer ${isUploadingWorld ? 'opacity-50 pointer-events-none' : ''}`}
+                >
+                  <Globe className="w-4 h-4" />
+                  {isUploadingWorld ? 'Uploading...' : 'Choose ZIP File'}
+                </label>
+                {isUploadingWorld && (
+                  <span className="text-[10px] font-mono text-mc-emerald animate-pulse">Extracting world...</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Danger Zone: Reset Worlds */}

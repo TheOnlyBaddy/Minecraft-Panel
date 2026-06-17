@@ -92,6 +92,7 @@ const Dashboard: React.FC = () => {
   const [worldStats, setWorldStats] = useState<any>(null);
   const [isLoadingWorldStats, setIsLoadingWorldStats] = useState(false);
   const [isResettingWorld, setIsResettingWorld] = useState(false);
+  const [isUploadingWorld, setIsUploadingWorld] = useState(false);
 
   // Access (Users list) states
   const [usersList, setUsersList] = useState<any[]>([]);
@@ -571,8 +572,8 @@ const Dashboard: React.FC = () => {
     if (!confirm(`Are you sure you want to uninstall/delete "${filename}"?`)) return;
     setIsUninstallingPlugin(prev => ({ ...prev, [filename]: true }));
     try {
-      const response = await fetch(`/api/server/plugins/uninstall?file_name=${filename}`, {
-        method: 'POST'
+      const response = await fetch(`/api/server/plugins?file_name=${filename}`, {
+        method: 'DELETE'
       });
       if (response.ok) {
         showToast('Plugin uninstalled successfully. Please restart server.', 'success');
@@ -723,6 +724,31 @@ const Dashboard: React.FC = () => {
       showToast('Failed to reset worlds due to API error.', 'error');
     } finally {
       setIsResettingWorld(false);
+    }
+  };
+
+  const handleUploadWorld = async (file: File) => {
+    setIsUploadingWorld(true);
+    showToast(`Uploading world file "${file.name}"...`, 'info');
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch('/api/server/worlds/upload', {
+        method: 'POST',
+        body: formData
+      });
+      if (response.ok) {
+        showToast('World uploaded and applied successfully!', 'success');
+        fetchWorldStats();
+      } else {
+        const errDetails = await response.json();
+        showToast(`World upload failed: ${errDetails.detail || 'Unknown error'}`, 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to upload world file.', 'error');
+    } finally {
+      setIsUploadingWorld(false);
     }
   };
 
@@ -1433,8 +1459,10 @@ const Dashboard: React.FC = () => {
                   worldStats={worldStats}
                   isLoadingWorldStats={isLoadingWorldStats}
                   isResettingWorld={isResettingWorld}
+                  isUploadingWorld={isUploadingWorld}
                   handleDownloadWorld={handleDownloadWorld}
                   handleResetWorld={handleResetWorld}
+                  handleUploadWorld={handleUploadWorld}
                   formatMB={formatMB}
                 />
               )}

@@ -80,6 +80,13 @@ def get_plugin_metadata(jar_path: str) -> Dict[str, Any]:
 @router.get("")
 async def list_plugins(current_user: User = Depends(require_admin)):
     try:
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("list_plugins")
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            return res.get("plugins", [])
+
         plugins_dir = os.path.join(settings.MINECRAFT_SERVER_DIR, "plugins")
         if not os.path.exists(plugins_dir):
             os.makedirs(plugins_dir, exist_ok=True)
@@ -121,33 +128,40 @@ async def uninstall_plugin(
                 detail="Only .jar files can be uninstalled."
             )
         
-        target_path = config_service.safe_resolve_path(os.path.join("plugins", file_name))
-        
-        if not os.path.exists(target_path):
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Plugin file {file_name} not found."
-            )
-            
-        os.remove(target_path)
-        
-        plugin_name_slug = os.path.splitext(file_name)[0]
-        plugins_dir = os.path.dirname(target_path)
-        
-        folders_to_check = [plugin_name_slug]
-        for sep in ['-', '_']:
-            if sep in plugin_name_slug:
-                prefix = plugin_name_slug.split(sep)[0]
-                if prefix and len(prefix) > 2:
-                    folders_to_check.append(prefix)
-                    
         deleted_folders = []
-        for folder in folders_to_check:
-            resolved_folder_path = config_service.safe_resolve_path(os.path.join("plugins", folder))
-            if os.path.exists(resolved_folder_path) and os.path.isdir(resolved_folder_path):
-                shutil.rmtree(resolved_folder_path)
-                deleted_folders.append(folder)
-                break
+        if settings.is_remote_mode:
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("uninstall_plugin", {"file_name": file_name})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+            deleted_folders = res.get("deleted_folders", [])
+        else:
+            target_path = config_service.safe_resolve_path(os.path.join("plugins", file_name))
+            
+            if not os.path.exists(target_path):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Plugin file {file_name} not found."
+                )
+                
+            os.remove(target_path)
+            
+            plugin_name_slug = os.path.splitext(file_name)[0]
+            plugins_dir = os.path.dirname(target_path)
+            
+            folders_to_check = [plugin_name_slug]
+            for sep in ['-', '_']:
+                if sep in plugin_name_slug:
+                    prefix = plugin_name_slug.split(sep)[0]
+                    if prefix and len(prefix) > 2:
+                        folders_to_check.append(prefix)
+                        
+            for folder in folders_to_check:
+                resolved_folder_path = config_service.safe_resolve_path(os.path.join("plugins", folder))
+                if os.path.exists(resolved_folder_path) and os.path.isdir(resolved_folder_path):
+                    shutil.rmtree(resolved_folder_path)
+                    deleted_folders.append(folder)
+                    break
                 
         await audit_service.log(
             db=db,
@@ -191,13 +205,22 @@ async def upload_plugin_file(
                 detail="Invalid filename. Use only alphanumeric characters, spaces, dots, dashes, and underscores."
             )
             
-        target_path = config_service.safe_resolve_path(os.path.join("plugins", filename))
-        
-        plugins_dir = os.path.dirname(target_path)
-        os.makedirs(plugins_dir, exist_ok=True)
-        
-        with open(target_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        if settings.is_remote_mode:
+            import base64
+            file_bytes = await file.read()
+            content_b64 = base64.b64encode(file_bytes).decode("utf-8")
+            from app.services.agent_coordinator import agent_coordinator
+            res = await agent_coordinator.send_request("upload_plugin", {"file_name": filename, "content_b64": content_b64})
+            if res.get("status") == "error":
+                raise HTTPException(status_code=400, detail=res.get("detail"))
+        else:
+            target_path = config_service.safe_resolve_path(os.path.join("plugins", filename))
+            
+            plugins_dir = os.path.dirname(target_path)
+            os.makedirs(plugins_dir, exist_ok=True)
+            
+            with open(target_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
             
         plugin_name_slug = os.path.splitext(filename)[0]
         await audit_service.log(

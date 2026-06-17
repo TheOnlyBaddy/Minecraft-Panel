@@ -32,6 +32,67 @@ def is_ws_open(ws):
             pass
     return getattr(ws, "open", False)
 
+import base64
+
+def parse_plugin_yml(content: str) -> dict:
+    """Simple parser for YAML formatted plugin.yml files in plugins."""
+    info = {}
+    for line in content.splitlines():
+        # Remove comments
+        line = line.split('#')[0].strip()
+        if not line:
+            continue
+        if ":" in line:
+            parts = line.split(":", 1)
+            key = parts[0].strip()
+            val = parts[1].strip()
+            # Clean string quotes
+            if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+                val = val[1:-1]
+            
+            # Extract basic keys
+            if key == "authors" or key == "author":
+                if val.startswith('[') and val.endswith(']'):
+                    val = [x.strip() for x in val[1:-1].split(',')]
+                else:
+                    val = [val] if val else []
+                info["authors"] = val
+            else:
+                info[key] = val
+    return info
+
+def get_plugin_metadata(jar_path: str) -> dict:
+    """Retrieve metadata by parsing plugin.yml inside the jar file."""
+    default_meta = {
+        "name": os.path.splitext(os.path.basename(jar_path))[0],
+        "version": "Unknown",
+        "description": "No description provided.",
+        "authors": [],
+        "website": ""
+    }
+    try:
+        if not zipfile.is_zipfile(jar_path):
+            return default_meta
+        with zipfile.ZipFile(jar_path, 'r') as jar:
+            if "plugin.yml" in jar.namelist():
+                content = jar.read("plugin.yml").decode("utf-8", errors="ignore")
+                meta = parse_plugin_yml(content)
+                if "name" in meta:
+                    default_meta["name"] = meta["name"]
+                if "version" in meta:
+                    default_meta["version"] = meta["version"]
+                if "description" in meta:
+                    default_meta["description"] = meta["description"]
+                if "authors" in meta:
+                    default_meta["authors"] = meta["authors"]
+                elif "author" in meta:
+                    default_meta["authors"] = [meta["author"]]
+                if "website" in meta:
+                    default_meta["website"] = meta["website"]
+    except Exception:
+        pass
+    return default_meta
+
 class LocalAgent:
     def __init__(self):
         self.status = "STOPPED"
@@ -393,6 +454,195 @@ class LocalAgent:
         except Exception as e:
             return {"status": "error", "detail": str(e)}
 
+    def list_plugins(self):
+        plugins_dir = os.path.join(self.server_dir, "plugins")
+        if not os.path.exists(plugins_dir):
+            os.makedirs(plugins_dir, exist_ok=True)
+            
+        results = []
+        for entry in os.scandir(plugins_dir):
+            if entry.is_file() and entry.name.endswith(".jar"):
+                meta = get_plugin_metadata(entry.path)
+                results.append({
+                    "file_name": entry.name,
+                    "name": meta["name"],
+                    "version": meta["version"],
+                    "description": meta["description"],
+                    "authors": meta["authors"],
+                    "website": meta["website"],
+                    "size_bytes": entry.stat().st_size
+                })
+        results.sort(key=lambda x: x["name"].lower())
+        return {"status": "success", "plugins": results}
+
+    def uninstall_plugin(self, file_name: str):
+        if not file_name.endswith(".jar"):
+            return {"status": "error", "detail": "Only .jar files can be uninstalled."}
+        
+        plugins_dir = os.path.join(self.server_dir, "plugins")
+        target_path = os.path.abspath(os.path.join(plugins_dir, file_name))
+        if not target_path.startswith(plugins_dir):
+            return {"status": "error", "detail": "Access Denied"}
+            
+        if not os.path.exists(target_path):
+            return {"status": "error", "detail": f"Plugin file {file_name} not found."}
+            
+        os.remove(target_path)
+        
+        # Also clean up configuration folders
+        plugin_name_slug = os.path.splitext(file_name)[0]
+        folders_to_check = [plugin_name_slug]
+        for sep in ['-', '_']:
+            if sep in plugin_name_slug:
+                prefix = plugin_name_slug.split(sep)[0]
+                if prefix and len(prefix) > 2:
+                    folders_to_check.append(prefix)
+                    
+        deleted_folders = []
+        for folder in folders_to_check:
+            resolved_folder_path = os.path.abspath(os.path.join(plugins_dir, folder))
+            if resolved_folder_path.startswith(plugins_dir) and os.path.exists(resolved_folder_path) and os.path.isdir(resolved_folder_path):
+                shutil.rmtree(resolved_folder_path)
+                deleted_folders.append(folder)
+                break
+        return {"status": "success", "deleted_folders": deleted_folders}
+
+    def upload_plugin(self, file_name: str, content_b64: str):
+        if not file_name.endswith(".jar"):
+            return {"status": "error", "detail": "Only .jar files can be uploaded as plugins."}
+            
+        plugins_dir = os.path.join(self.server_dir, "plugins")
+        target_path = os.path.abspath(os.path.join(plugins_dir, file_name))
+        if not target_path.startswith(plugins_dir):
+            return {"status": "error", "detail": "Access Denied"}
+            
+        try:
+            os.makedirs(plugins_dir, exist_ok=True)
+            data = base64.b64decode(content_b64)
+            with open(target_path, "wb") as f:
+                f.write(data)
+            return {"status": "success"}
+        except Exception as e:
+            return {"status": "error", "detail": str(e)}
+
+    def get_world_stats(self, level_name: str):
+        world_path = os.path.join(self.server_dir, level_name)
+        nether_path = os.path.join(self.server_dir, f"{level_name}_nether")
+        end_path = os.path.join(self.server_dir, f"{level_name}_the_end")
+
+        def get_dir_size(path: str) -> int:
+            total_size = 0
+            if not os.path.exists(path):
+                return 0
+            if os.path.isfile(path):
+                return os.path.getsize(path)
+            for dirpath, dirnames, filenames in os.walk(path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if os.path.exists(fp):
+                        total_size += os.path.getsize(fp)
+            return total_size
+
+        world_size = get_dir_size(world_path)
+        nether_size = get_dir_size(nether_path)
+        end_size = get_dir_size(end_path)
+        total_size = world_size + nether_size + end_size
+
+        return {
+            "status": "success",
+            "level_name": level_name,
+            "exists": os.path.exists(world_path),
+            "world_size": world_size,
+            "nether_size": nether_size,
+            "end_size": end_size,
+            "total_size": total_size
+        }
+
+    async def reset_world(self, level_name: str):
+        world_path = os.path.join(self.server_dir, level_name)
+        nether_path = os.path.join(self.server_dir, f"{level_name}_nether")
+        end_path = os.path.join(self.server_dir, f"{level_name}_the_end")
+
+        was_running = self.status in ("STARTING", "RUNNING")
+
+        if was_running:
+            await self.send_log("[Agent]: Stopping server for world reset...")
+            await self.stop_server()
+            await asyncio.sleep(2)
+
+        deleted_paths = []
+        for path in (world_path, nether_path, end_path):
+            if os.path.exists(path):
+                try:
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
+                    deleted_paths.append(os.path.basename(path))
+                except Exception as e:
+                    await self.send_log(f"[Agent Warning]: Failed to delete {path}: {e}")
+
+        if was_running:
+            await self.send_log("[Agent]: Worlds purged. Booting server to generate fresh worlds...")
+            await self.start_server()
+
+        return {
+            "status": "success",
+            "detail": "Worlds successfully reset.",
+            "deleted": deleted_paths
+        }
+
+    async def upload_world(self, level_name: str, content_b64: str):
+        world_path = os.path.join(self.server_dir, level_name)
+        nether_path = os.path.join(self.server_dir, f"{level_name}_nether")
+        end_path = os.path.join(self.server_dir, f"{level_name}_the_end")
+
+        was_running = self.status in ("STARTING", "RUNNING")
+
+        if was_running:
+            await self.send_log("[Agent]: Stopping server for world upload...")
+            await self.stop_server()
+            await asyncio.sleep(2)
+
+        # Delete existing world folders
+        for path in (world_path, nether_path, end_path):
+            if os.path.exists(path):
+                try:
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
+                except Exception as e:
+                    await self.send_log(f"[Agent Warning]: Failed to delete old world {path}: {e}")
+
+        # Save and extract zip
+        temp_zip = os.path.join(self.server_dir, "temp_world_upload.zip")
+        try:
+            data = base64.b64decode(content_b64)
+            with open(temp_zip, "wb") as f:
+                f.write(data)
+            
+            with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
+                zip_ref.extractall(self.server_dir)
+                
+            if os.path.exists(temp_zip):
+                os.remove(temp_zip)
+                
+            await self.send_log("[Agent]: World ZIP uploaded and extracted successfully.")
+        except Exception as e:
+            if os.path.exists(temp_zip):
+                try:
+                    os.remove(temp_zip)
+                except Exception:
+                    pass
+            return {"status": "error", "detail": f"Failed to extract world archive: {str(e)}"}
+
+        if was_running:
+            await self.send_log("[Agent]: Starting server with the uploaded world...")
+            await self.start_server()
+
+        return {"status": "success", "detail": "World uploaded and applied successfully."}
+
     # Communication Loops
     async def send_log(self, line: str):
         if is_ws_open(self.ws):
@@ -444,6 +694,18 @@ class LocalAgent:
                 response = self.create_backup()
             elif mtype == "restore_backup":
                 response = self.restore_backup(msg.get("backup_name", ""))
+            elif mtype == "list_plugins":
+                response = self.list_plugins()
+            elif mtype == "uninstall_plugin":
+                response = self.uninstall_plugin(msg.get("file_name", ""))
+            elif mtype == "upload_plugin":
+                response = self.upload_plugin(msg.get("file_name", ""), msg.get("content_b64", ""))
+            elif mtype == "get_world_stats":
+                response = self.get_world_stats(msg.get("level_name", "world"))
+            elif mtype == "reset_world":
+                response = await self.reset_world(msg.get("level_name", "world"))
+            elif mtype == "upload_world":
+                response = await self.upload_world(msg.get("level_name", "world"), msg.get("content_b64", ""))
         except Exception as e:
             print(f"Error handling message {mtype}: {e}", file=sys.stderr)
             response = {"status": "error", "detail": f"Agent internal error: {str(e)}"}
