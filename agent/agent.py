@@ -22,6 +22,16 @@ JAR_NAME = config["jar_name"]
 MIN_RAM = config["min_ram"]
 MAX_RAM = config["max_ram"]
 
+def is_ws_open(ws):
+    if not ws:
+        return False
+    if hasattr(ws, "state"):
+        try:
+            return ws.state.name == "OPEN"
+        except AttributeError:
+            pass
+    return getattr(ws, "open", False)
+
 class LocalAgent:
     def __init__(self):
         self.status = "STOPPED"
@@ -385,14 +395,14 @@ class LocalAgent:
 
     # Communication Loops
     async def send_log(self, line: str):
-        if self.ws and self.ws.open:
+        if is_ws_open(self.ws):
             await self.ws.send(json.dumps({
                 "type": "log",
                 "line": line
             }))
 
     async def send_status_update(self):
-        if self.ws and self.ws.open:
+        if is_ws_open(self.ws):
             await self.ws.send(json.dumps({
                 "type": "status_update",
                 "status": self.status
@@ -449,7 +459,7 @@ class LocalAgent:
     async def metrics_reporter_loop(self):
         while True:
             try:
-                if self.ws and self.ws.open:
+                if is_ws_open(self.ws):
                     metrics = self.get_metrics()
                     await self.ws.send(json.dumps({
                         "type": "metrics",
