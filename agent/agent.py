@@ -409,35 +409,42 @@ class LocalAgent:
         
         response = None
         
-        if mtype == "start_server":
-            response = await self.start_server()
-        elif mtype == "stop_server":
-            response = await self.stop_server()
-        elif mtype == "kill_server":
-            response = await self.kill_server()
-        elif mtype == "write_stdin":
-            await self.write_stdin(msg.get("command", ""))
-        elif mtype == "list_files":
-            response = self.list_files(msg.get("path", ""))
-        elif mtype == "read_file":
-            response = self.read_file(msg.get("path", ""))
-        elif mtype == "write_file":
-            response = self.write_file(msg.get("path", ""), msg.get("content", ""))
-        elif mtype == "delete_file":
-            response = self.delete_file(msg.get("path", ""))
-        elif mtype == "create_folder":
-            response = self.create_folder(msg.get("path", ""))
-        elif mtype == "list_backups":
-            response = self.list_backups()
-        elif mtype == "create_backup":
-            response = self.create_backup()
-        elif mtype == "restore_backup":
-            response = self.restore_backup(msg.get("backup_name", ""))
+        try:
+            if mtype == "start_server":
+                response = await self.start_server()
+            elif mtype == "stop_server":
+                response = await self.stop_server()
+            elif mtype == "kill_server":
+                response = await self.kill_server()
+            elif mtype == "write_stdin":
+                await self.write_stdin(msg.get("command", ""))
+            elif mtype == "list_files":
+                response = self.list_files(msg.get("path", ""))
+            elif mtype == "read_file":
+                response = self.read_file(msg.get("path", ""))
+            elif mtype == "write_file":
+                response = self.write_file(msg.get("path", ""), msg.get("content", ""))
+            elif mtype == "delete_file":
+                response = self.delete_file(msg.get("path", ""))
+            elif mtype == "create_folder":
+                response = self.create_folder(msg.get("path", ""))
+            elif mtype == "list_backups":
+                response = self.list_backups()
+            elif mtype == "create_backup":
+                response = self.create_backup()
+            elif mtype == "restore_backup":
+                response = self.restore_backup(msg.get("backup_name", ""))
+        except Exception as e:
+            print(f"Error handling message {mtype}: {e}", file=sys.stderr)
+            response = {"status": "error", "detail": f"Agent internal error: {str(e)}"}
             
         if response is not None and req_id is not None:
             response["request_id"] = req_id
             response["type"] = f"{mtype}_response"
-            await self.ws.send(json.dumps(response))
+            try:
+                await self.ws.send(json.dumps(response))
+            except Exception as e:
+                print(f"Error sending response for {mtype}: {e}", file=sys.stderr)
 
     async def metrics_reporter_loop(self):
         while True:
