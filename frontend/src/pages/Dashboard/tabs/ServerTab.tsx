@@ -17,6 +17,7 @@ interface ServerTabProps {
   diskPercent: number;
   formatGB: (bytes: number) => string;
   getStatusText: (status: string) => string;
+  isAgentOffline: boolean;
 }
 
 const ServerTab: React.FC<ServerTabProps> = ({
@@ -35,6 +36,7 @@ const ServerTab: React.FC<ServerTabProps> = ({
   diskPercent,
   formatGB,
   getStatusText,
+  isAgentOffline,
 }) => {
   const isServerRunning = currentStatus === 'RUNNING';
   const isServerOffline = currentStatus === 'STOPPED' || currentStatus === 'CRASHED';
@@ -70,7 +72,7 @@ const ServerTab: React.FC<ServerTabProps> = ({
           {/* Start Button */}
           <button
             onClick={() => handleAction('start')}
-            disabled={!isServerOffline || !!actionPending}
+            disabled={!isServerOffline || !!actionPending || isAgentOffline}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-mc-emerald to-emerald-700 hover:to-mc-emerald text-bg-primary font-pixel font-bold text-xs tracking-wider border border-mc-emerald/30 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_12px_rgba(46,204,113,0.3)] transition-all"
           >
             <Play className="w-4 h-4 fill-bg-primary" />
@@ -80,7 +82,7 @@ const ServerTab: React.FC<ServerTabProps> = ({
           {/* Stop Button */}
           <button
             onClick={() => handleAction('stop')}
-            disabled={isServerOffline || isServerTransitioning || !!actionPending}
+            disabled={isServerOffline || isServerTransitioning || !!actionPending || isAgentOffline}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-status-error to-red-800 hover:to-status-error text-white font-pixel font-bold text-xs tracking-wider border border-status-error/30 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_12px_rgba(255,93,93,0.2)] transition-all"
           >
             <Square className="w-4 h-4 fill-white" />
@@ -90,7 +92,7 @@ const ServerTab: React.FC<ServerTabProps> = ({
           {/* Restart Button */}
           <button
             onClick={() => handleAction('restart')}
-            disabled={!isServerRunning || !!actionPending}
+            disabled={!isServerRunning || !!actionPending || isAgentOffline}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-mc-gold to-yellow-700 hover:to-mc-gold text-bg-primary font-pixel font-bold text-xs tracking-wider border border-mc-gold/30 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_0_12px_rgba(245,197,66,0.2)] transition-all"
           >
             <RotateCcw className="w-4 h-4" />

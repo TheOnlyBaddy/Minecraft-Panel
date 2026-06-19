@@ -62,6 +62,9 @@ const Dashboard: React.FC = () => {
   const { data: telemetryData, isConnected: isTelemetryConnected, error: wsError } = useWebSocket();
   const { logs, isConnected: isConsoleConnected, error: consoleError, clearLogs } = useConsoleWebSocket();
 
+  const isAgentOnline = isTelemetryConnected && !!telemetryData?.agent_connected;
+  const isAgentOffline = !isAgentOnline;
+
   // Sidebar Collapse state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -1350,6 +1353,11 @@ const Dashboard: React.FC = () => {
               <span className={`w-2 h-2 rounded-none ${isTelemetryConnected ? 'bg-mc-emerald shadow-[0_0_8px_rgba(46,204,113,0.5)]' : 'bg-status-offline'}`} />
               <span>Telemetry</span>
             </div>
+
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-text-secondary">
+              <span className={`w-2 h-2 rounded-none ${isAgentOnline ? 'bg-mc-emerald shadow-[0_0_8px_rgba(46,204,113,0.5)]' : 'bg-status-offline'}`} />
+              <span>Agent</span>
+            </div>
             
             {activeTab === 'console' && (
               <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-text-secondary">
@@ -1396,6 +1404,7 @@ const Dashboard: React.FC = () => {
                   diskPercent={diskPercent}
                   formatGB={formatGB}
                   getStatusText={getStatusText}
+                  isAgentOffline={isAgentOffline}
                 />
               )}
 
