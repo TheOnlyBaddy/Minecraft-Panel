@@ -1348,20 +1348,20 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Uptime indicators and address badge */}
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-text-secondary">
-              <span className={`w-2 h-2 rounded-none ${isTelemetryConnected ? 'bg-mc-emerald shadow-[0_0_8px_rgba(46,204,113,0.5)]' : 'bg-status-offline'}`} />
+          <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-text-secondary">
+              <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-none ${isTelemetryConnected ? 'bg-mc-emerald shadow-[0_0_8px_rgba(46,204,113,0.5)]' : 'bg-status-offline'}`} />
               <span>Telemetry</span>
             </div>
 
-            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-text-secondary">
-              <span className={`w-2 h-2 rounded-none ${isAgentOnline ? 'bg-mc-emerald shadow-[0_0_8px_rgba(46,204,113,0.5)]' : 'bg-status-offline'}`} />
+            <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-text-secondary">
+              <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-none ${isAgentOnline ? 'bg-mc-emerald shadow-[0_0_8px_rgba(46,204,113,0.5)]' : 'bg-status-offline'}`} />
               <span>Agent</span>
             </div>
             
             {activeTab === 'console' && (
-              <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-text-secondary">
-                <span className={`w-2 h-2 rounded-none ${isConsoleConnected ? 'bg-mc-emerald shadow-[0_0_8px_rgba(46,204,113,0.5)]' : 'bg-status-error animate-pulse'}`} />
+              <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-mono uppercase tracking-wider text-text-secondary">
+                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-none ${isConsoleConnected ? 'bg-mc-emerald shadow-[0_0_8px_rgba(46,204,113,0.5)]' : 'bg-status-error animate-pulse'}`} />
                 <span>Console Live</span>
               </div>
             )}
