@@ -79,6 +79,6 @@ async def get_panel_info():
         "minecraft_version": settings.MINECRAFT_VERSION
     }
 
-@app.get("/api/health")
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "healthy", "service": "Antigravity Panel"}
