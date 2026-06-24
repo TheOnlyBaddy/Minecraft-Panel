@@ -909,6 +909,7 @@ const Dashboard: React.FC = () => {
   };
 
   const fetchConfig = async () => {
+    if (isAgentOffline) return;
     setIsLoadingConfig(true);
     try {
       const response = await fetch('/api/server/config');
@@ -917,7 +918,10 @@ const Dashboard: React.FC = () => {
         setConfig({ ...DEFAULT_CONFIG, ...data });
       } else {
         const errDetails = await response.json();
-        showToast(`Failed to load config: ${errDetails.detail}`, 'error');
+        // Don't show toast if it's an agent-offline error; the inline banner handles it
+        if (!errDetails.detail?.includes('Agent is offline') && !errDetails.detail?.includes('agent')) {
+          showToast(`Failed to load config: ${errDetails.detail}`, 'error');
+        }
       }
     } catch (err) {
       console.error('Failed to load configuration:', err);
@@ -1434,6 +1438,7 @@ const Dashboard: React.FC = () => {
                   handleConfigChange={handleConfigChange}
                   handleSaveConfig={handleSaveConfig}
                   isModerator={isModerator}
+                  isAgentOffline={isAgentOffline}
                 />
               )}
 

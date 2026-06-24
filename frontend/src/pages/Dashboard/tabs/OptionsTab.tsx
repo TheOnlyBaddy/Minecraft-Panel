@@ -1,4 +1,5 @@
 import React from 'react';
+import { Settings } from 'lucide-react';
 
 interface OptionsTabProps {
   config: Record<string, any>;
@@ -7,6 +8,7 @@ interface OptionsTabProps {
   handleConfigChange: (key: string, value: any) => void;
   handleSaveConfig: (e: React.FormEvent) => void;
   isModerator: boolean;
+  isAgentOffline: boolean;
 }
 
 const OptionsTab: React.FC<OptionsTabProps> = ({
@@ -16,7 +18,20 @@ const OptionsTab: React.FC<OptionsTabProps> = ({
   handleConfigChange,
   handleSaveConfig,
   isModerator,
+  isAgentOffline,
 }) => {
+  if (isAgentOffline) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-bg-secondary border border-status-error/25 bg-status-error/5 text-center space-y-3 font-sans shadow-mc-sm select-none">
+        <div className="w-12 h-12 rounded-none bg-status-error/10 flex items-center justify-center border border-status-error/20">
+          <Settings className="w-6 h-6 text-status-error" />
+        </div>
+        <strong className="block text-xs font-pixel text-status-error uppercase tracking-wider">Local Agent Offline</strong>
+        <span className="text-text-secondary text-xs font-mono max-w-sm">The Minecraft Local Agent is offline. Please make sure the agent is running on your local PC to inspect or manage server properties.</span>
+      </div>
+    );
+  }
+
   if (isLoadingConfig) {
     return (
       <div className="flex items-center justify-center py-16">
